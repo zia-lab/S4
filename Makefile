@@ -15,6 +15,7 @@
 #  NOTE: on Fedora, need to link blas and lapack properly, where X.X.X is some version numbers
 #  Linking Command Example: sudo ln -s /usr/lib64/liblapack.so.X.X.X /usr/lib64/liblapack.so
 #  blas Example: sudo ln -s /usr/lib64/libopeblas64.so.X.X.X /usr/lib64/libblas.so
+#  Can also use -L to link to the explicit libary path 
 BLAS_LIB = -lblas
 LAPACK_LIB = -llapack
 
@@ -33,7 +34,7 @@ LUA_LIB = -L./lua-5.2.4/install/lib -llua -ldl -lm
 #  FTW3_LIB = -lfftw 
 #  May need to link libraries properly as with blas and lapack above
 FFTW3_INC =
-FFTW3_LIB = 
+FFTW3_LIB = -lfftw
 
 # Typically,
 #  PTHREAD_INC = -DHAVE_UNISTD_H
@@ -47,15 +48,17 @@ PTHREAD_LIB = -lpthread
 # Typically, if installed:
 #CHOLMOD_INC = -I/usr/include/suitesparse
 #CHOLMOD_LIB = -lcholmod -lamd -lcolamd -lcamd -lccolamd
-CHOLMOD_INC = 
-CHOLMOD_LIB = 
+CHOLMOD_INC = -I/usr/include/suitesparse
+CHOLMOD_LIB = -lcholmod -lamd -lcolamd -lcamd -lccolamd
 
 # Specify the MPI library
 # For example, on Fedora: dnf  install openmpi-devel
 #MPI_INC = -I/usr/include/openmpi-x86_64/openmpi/ompi
 #MPI_LIB = -lmpi
-MPI_INC =
-MPI_LIB =
+# or, explicitly link to the library with -L, example below
+#MPI_LIB = -L/usr/lib64/openmpi/lib/libmpi.so
+MPI_INC = -I/usr/include/openmpi-x86_64/openmpi
+MPI_LIB = -L/usr/lib64/openmpi/lib/libmpi.so
 
 # Specify custom compilers if needed
 CXX = g++
