@@ -8,9 +8,13 @@
 #  On Mac OS,
 #   BLAS_LIB = -framework vecLib
 #   LAPACK_LIB = -framework vecLib
-#  On Debian, with reference BLAS and Lapack (slow)
+#  On Fedora: dnf install openblas-devel
+#  On Debian and Fedora, with reference BLAS and Lapack (slow)
 #   BLAS_LIB = -lblas
 #   LAPACK_LIB = -llapack
+#  NOTE: on Fedora, need to link blas and lapack properly, where X.X.X is some version numbers
+#  Linking Command Example: sudo ln -s /usr/lib64/liblapack.so.X.X.X /usr/lib64/liblapack.so
+#  blas Example: sudo ln -s /usr/lib64/libopeblas64.so.X.X.X /usr/lib64/libblas.so
 BLAS_LIB = -lblas
 LAPACK_LIB = -llapack
 
@@ -24,7 +28,10 @@ LUA_LIB = -L./lua-5.2.4/install/lib -llua -ldl -lm
 # OPTIONAL
 # Typically if installed,
 #  FFTW3_INC can be left empty
-#  FFTW3_LIB = -lfftw3
+#  FFTW3_LIB = -lfftw3 
+#  or, if Fedora and/or fftw is version 3 but named fftw rather than fftw3
+#  FTW3_LIB = -lfftw 
+#  May need to link libraries properly as with blas and lapack above
 FFTW3_INC =
 FFTW3_LIB = 
 
@@ -35,15 +42,18 @@ PTHREAD_INC = -DHAVE_UNISTD_H
 PTHREAD_LIB = -lpthread
 
 # OPTIONAL
-# Typically if installed,
+# If not installed:
+# Fedora: dnf install libsuitsparse-devel
+# Typically, if installed:
 #CHOLMOD_INC = -I/usr/include/suitesparse
 #CHOLMOD_LIB = -lcholmod -lamd -lcolamd -lcamd -lccolamd
 CHOLMOD_INC = 
 CHOLMOD_LIB = 
 
 # Specify the MPI library
-#MPI_INC =
-#MPI_LIB =
+# For example, on Fedora: dnf  install openmpi-devel
+#MPI_INC = -I/usr/include/openmpi-x86_64/openmpi/ompi
+#MPI_LIB = -lmpi
 MPI_INC =
 MPI_LIB =
 
@@ -268,7 +278,7 @@ FunctionSampler2D.so: modules/function_sampler_2d.c modules/function_sampler_2d.
 S4_pyext: objdir $(S4_LIBNAME)
 	echo "$(LIBS)" > $(OBJDIR)/tmp.txt
 	sh gensetup.py.sh $(OBJDIR) $(S4_LIBNAME)
-	python setup.py build
+	pip install ./
 
 clean:
 	rm -rf $(OBJDIR)
