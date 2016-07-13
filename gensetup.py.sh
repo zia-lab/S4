@@ -2,18 +2,19 @@
 
 OBJDIR="$1"
 LIBFILE="$2"
+LIBS="$3"
 
 cat <<SETUPPY > setup.py
 from distutils.core import setup, Extension
 
+libs = ['S4', 'stdc++']
+libs.extend( [lib[2::] for lib in '$LIBS'.split()])
+print libs
 S4module = Extension('S4',
 	sources = [
 		'S4/main_python.c'
 	],
-	libraries = [
-		'S4',
-		'stdc++'
-	],
+	libraries = libs,
 	library_dirs = ['$OBJDIR'],
 	extra_link_args = [
 		'$LIBFILE'
