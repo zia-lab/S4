@@ -1,23 +1,16 @@
-#!/bin/bash
-
-OBJDIR="$1"
-LIBFILE="$2"
-LIBS="$3"
-
-cat <<SETUPPY > setup.py
 from distutils.core import setup, Extension
 
 libs = ['S4', 'stdc++']
-libs.extend( [lib[2::] for lib in '$LIBS'.split()])
-
+libs.extend( [lib[2::] for lib in '-lblas -llapack  -lpthread  '.split()])
+print libs
 S4module = Extension('S4',
 	sources = [
 		'S4/main_python.c'
 	],
 	libraries = libs,
-	library_dirs = ['$OBJDIR'],
+	library_dirs = ['./build'],
 	extra_link_args = [
-		'$LIBFILE'
+		'./build/libS4.a'
 	]
 )
 
@@ -26,4 +19,3 @@ setup(name = 'S4',
 	description = 'Stanford Stratified Structure Solver (S4): Fourier Modal Method',
 	ext_modules = [S4module]
 )
-SETUPPY
