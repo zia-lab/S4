@@ -18,7 +18,8 @@ S4module = Extension('S4',
 	library_dirs = ['$OBJDIR'],
 	extra_link_args = [
 		'$LIBFILE'
-	]
+	],
+	extra_compile_args=['-std=gnu99'] 
 )
 
 setup(name = 'S4',

@@ -33,8 +33,8 @@ LUA_LIB = -L./lua-5.2.4/install/lib -llua -ldl -lm
 #  or, if Fedora and/or fftw is version 3 but named fftw rather than fftw3
 #  FTW3_LIB = -lfftw 
 #  May need to link libraries properly as with blas and lapack above
-FFTW3_INC =
-FFTW3_LIB = -lfftw
+#FFTW3_INC =
+#FFTW3_LIB = -lfftw
 
 # Typically,
 #  PTHREAD_INC = -DHAVE_UNISTD_H
