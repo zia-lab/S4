@@ -48,8 +48,8 @@ PTHREAD_LIB = -lpthread
 # Typically, if installed:
 #CHOLMOD_INC = -I/usr/include/suitesparse
 #CHOLMOD_LIB = -lcholmod -lamd -lcolamd -lcamd -lccolamd
-CHOLMOD_INC = -I/usr/include/suitesparse
-CHOLMOD_LIB = -lcholmod -lamd -lcolamd -lcamd -lccolamd
+#CHOLMOD_INC = -I/usr/include/suitesparse
+#CHOLMOD_LIB = -lcholmod -lamd -lcolamd -lcamd -lccolamd
 
 # Specify the MPI library
 # For example, on Fedora: dnf  install openmpi-devel
@@ -57,8 +57,8 @@ CHOLMOD_LIB = -lcholmod -lamd -lcolamd -lcamd -lccolamd
 #MPI_LIB = -lmpi
 # or, explicitly link to the library with -L, example below
 #MPI_LIB = -L/usr/lib64/openmpi/lib/libmpi.so
-MPI_INC = -I/usr/include/openmpi-x86_64/openmpi
-MPI_LIB = -L/usr/lib64/openmpi/lib/libmpi.so
+#MPI_INC = -I/usr/include/openmpi-x86_64/openmpi
+#MPI_LIB = -L/usr/lib64/openmpi/lib/libmpi.so
 
 # Specify custom compilers if needed
 CXX = g++
