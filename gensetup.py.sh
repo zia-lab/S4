@@ -7,7 +7,7 @@ LIBS="$3"
 cat <<SETUPPY > setup.py
 from distutils.core import setup, Extension
 
-libs = ['S4', 'stdc++', 'gfortran']
+libs = ['S4', 'stdc++']
 libs.extend( [lib[2::] for lib in '$LIBS'.split()])
 
 S4module = Extension('S4',
