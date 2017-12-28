@@ -260,9 +260,11 @@ int lanczos_converter(PyObject *obj, struct lanczos_smoothing_settings *s){
 	s->set_power = 0;
 	s->set_width = 0;
 	if(PyBool_Check(obj)){
+        // printf("\nPassed in boolean to lanczos\n");
 		s->use = (Py_True == obj);
 		return 1;
 	}else if(PyDict_Check(obj)){
+        // printf("\nPassed in dict to lanczos\n");
 		PyObject *val;
 		s->use = 1;
 		if((val = PyDict_GetItemString(obj, "Width"))){
@@ -1591,7 +1593,7 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 		&discretization_resolution,
 		&bool_converter, &polarization_decomp,
 		&polarization_basis,
-		&bool_converter, &lanczos_smoothing,
+		&lanczos_converter, &lanczos_smoothing,
 		&bool_converter, &subpixel_smoothing,
 		&bool_converter, &conserve_memory
 	)){ return NULL; }

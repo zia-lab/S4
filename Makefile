@@ -280,7 +280,7 @@ FunctionSampler2D.so: modules/function_sampler_2d.c modules/function_sampler_2d.
 
 S4_pyext: objdir $(S4_LIBNAME)
 	sh gensetup.py.sh $(OBJDIR) $(S4_LIBNAME) "$(LIBS)"
-	pip3 install --upgrade ./
+	pip install --upgrade ./
 
 clean:
 	rm -rf $(OBJDIR)

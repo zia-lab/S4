@@ -2438,6 +2438,7 @@ int Simulation_GetEpsilon(Simulation *S, const double r[3], double eps[2]){
 	double mp1 = 0;
 	int pwr = S->options.lanczos_smoothing_power;
 	if(S->options.use_Lanczos_smoothing){
+        /* printf("\nHave Lanzcos smoothing options\n"); */
 		mp1 = GetLanczosSmoothingOrder(S);
 		mp1 *= S->options.lanczos_smoothing_width;
 	}
