@@ -1114,7 +1114,7 @@ void GetFieldAtPoint(
 	const std::complex<double> *hy  = &eh[3*n2+n];
 	const std::complex<double> *ney = &eh[4*n2+0];
 	const std::complex<double> *ex  = &eh[4*n2+n];
-	
+
 	std::complex<double> fE[3], fH[3];
 	fE[0] = 0;
 	fE[1] = 0;
@@ -1180,7 +1180,9 @@ void GetFieldOnGrid(
 	const std::complex<double> z_zero(0.);
 	const std::complex<double> z_one(1.);
 	const size_t n2 = 2*n;
+    // Total # of sampling points
 	const size_t N = nxy[0]*nxy[1];
+    // Center of grid
 	const int nxyoff[2] = { (int)(nxy[0]/2), (int)(nxy[1]/2) };
 	int inxy[2] = { (int)nxy[0], (int)nxy[1] };
 	int inxy_rev[2] = { (int)nxy[1], (int)nxy[0] };
@@ -1205,13 +1207,13 @@ void GetFieldOnGrid(
 	
 	for(size_t i = 0; i < n; ++i){
 		eh[i] = (ky[i]*hx[i] - kx[i]*hy[i]);
-		if(EPSILON2_TYPE_BLKDIAG1_SCALAR == epstype || EPSILON2_TYPE_BLKDIAG2_SCALAR == epstype){
-			RNP::TBLAS::Scale(n, epsilon_inv[0], eh,1);
-			RNP::TBLAS::Copy(n, eh,1, &eh[n], 1);
-		}else{
-			RNP::TBLAS::MultMV<'N'>(n,n, z_one,epsilon_inv,n, eh,1, z_zero,&eh[n],1);
-		}
 	}
+    if(EPSILON2_TYPE_BLKDIAG1_SCALAR == epstype || EPSILON2_TYPE_BLKDIAG2_SCALAR == epstype){
+        RNP::TBLAS::Scale(n, epsilon_inv[0], eh,1);
+        RNP::TBLAS::Copy(n, eh,1, &eh[n], 1);
+    }else{
+        RNP::TBLAS::MultMV<'N'>(n,n, z_one,epsilon_inv,n, eh,1, z_zero,&eh[n],1);
+    }
 	for(size_t i = 0; i < n; ++i){
 		const int iu = G[2*i+0];
 		const int iv = G[2*i+1];
