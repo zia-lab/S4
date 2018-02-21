@@ -1629,6 +1629,10 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 	}
 
     if(NULL != basisfieldprefix){
+        // const size_t prefix_len = strlen(basisfieldprefix);
+        // char *prefix = (char*)malloc(sizeof(char) * (prefix_len + 1));
+        // strcpy(prefix, basisfieldprefix);
+        // self->S.options.vector_field_dump_filename_prefix = prefix;
         self->S.options.vector_field_dump_filename_prefix = basisfieldprefix;
     }
 

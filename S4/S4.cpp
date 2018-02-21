@@ -250,10 +250,10 @@ void Simulation_Destroy(Simulation *S){
 	}
 	Simulation_SetExcitationType(S, -1);
 	Simulation_InvalidateFieldCache(S);
-	if(NULL != S->options.vector_field_dump_filename_prefix){
-		S->options.vector_field_dump_filename_prefix = NULL;
-		free(S->options.vector_field_dump_filename_prefix);
-	}
+	// if(NULL != S->options.vector_field_dump_filename_prefix){
+	// 	free(S->options.vector_field_dump_filename_prefix);
+	// 	S->options.vector_field_dump_filename_prefix = NULL;
+	// }
 	S4_TRACE("< Simulation_Destroy [omega=%f]\n", S->omega[0]);
 }
 void Simulation_Clone(const Simulation *S, Simulation *T){
