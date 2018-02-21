@@ -1570,6 +1570,7 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 		"LanczosSmoothing",          /* obj */
 		"SubpixelSmoothing",         /* bool */
 		"ConserveMemory",            /* bool */
+        "BasisFieldDumpPrefix",      /* str */
 		NULL
 	};
 	int verbosity = -1;
@@ -1584,9 +1585,10 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 
 	const char *lattice_truncation = NULL;
 	const char *polarization_basis = NULL;
+	const char *basisfieldprefix = NULL;
 
 	if(!PyArg_ParseTupleAndKeywords(
-		args, kwds, "|isO&iO&sO&O&O&:SetOptions", kwlist,
+		args, kwds, "|isO&iO&sO&O&O&s:SetOptions", kwlist,
 		&verbosity,
 		&lattice_truncation,
 		&bool_converter, &discretized_epsilon,
@@ -1595,7 +1597,8 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 		&polarization_basis,
 		&lanczos_converter, &lanczos_smoothing,
 		&bool_converter, &subpixel_smoothing,
-		&bool_converter, &conserve_memory
+		&bool_converter, &conserve_memory,
+        &basisfieldprefix
 	)){ return NULL; }
 	if(verbosity >= 0){
 		if(verbosity > 9){ verbosity = 9; }
@@ -1624,6 +1627,11 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 	if(polarization_decomp >= 0){
 		self->S.options.use_polarization_basis = polarization_decomp;
 	}
+
+    if(NULL != basisfieldprefix){
+        self->S.options.vector_field_dump_filename_prefix = basisfieldprefix;
+    }
+
 	if(NULL != polarization_basis){
 		if(0 == strcmp("Default", polarization_basis)){
 			self->S.options.use_normal_vector_basis = 0;

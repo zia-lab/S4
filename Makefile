@@ -60,6 +60,9 @@ CHOLMOD_LIB = -lcholmod -lamd -lcolamd -lcamd -lccolamd
 #MPI_INC = -I/usr/include/openmpi-x86_64/openmpi
 #MPI_LIB = -L/usr/lib64/openmpi/lib/libmpi.so
 
+# Enable S4_TRACE debugging
+S4_DEBUG = 1
+
 # Specify custom compilers if needed
 CXX = g++
 CC  = gcc
@@ -83,6 +86,10 @@ CPPFLAGS = -I. -IS4 -IS4/RNP -IS4/kiss_fft
 
 ifdef BLAS_LIB
 CPPFLAGS += -DHAVE_BLAS
+endif
+
+ifdef S4_DEBUG
+CPPFLAGS += -DENABLE_S4_TRACE
 endif
 
 ifdef LAPACK_LIB
