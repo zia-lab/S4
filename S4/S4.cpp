@@ -2290,10 +2290,19 @@ int Simulation_GetField(Simulation *S, const double r[3], double fE[6], double f
 	//RNP::IO::PrintVector(n4, ab, 1);
 	TranslateAmplitudes(S->n_G, Lbands->q, L->thickness, dz, ab);
 	std::complex<double> efield[3], hfield[3];
-	GetFieldAtPoint(
+    // I need to jump in right here and do a few things
+    // 1) Modify GetFieldAtPoint to accept the vector field projection operator
+    // P as an argument. Don't forget to modify the header file
+    // 2) 
+	std::complex<double> *P = Simulation_GetCachedField((const Simulation *)S, (const Layer *)L);
+	GetFieldAtPointImproved(
 		S->n_G, S->solution->kx, S->solution->ky, std::complex<double>(S->omega[0],S->omega[1]),
-		Lbands->q, Lbands->kp, Lbands->phi, Lbands->Epsilon_inv, Lbands->epstype,
+		Lbands->q, Lbands->kp, Lbands->phi, Lbands->Epsilon_inv, P, Lbands->epstype,
 		ab, r, (NULL != fE ? efield : NULL) , (NULL != fH ? hfield : NULL), work);
+	/* GetFieldAtPoint( */
+	/* 	S->n_G, S->solution->kx, S->solution->ky, std::complex<double>(S->omega[0],S->omega[1]), */
+	/* 	Lbands->q, Lbands->kp, Lbands->phi, Lbands->Epsilon_inv, Lbands->epstype, */
+	/* 	ab, r, (NULL != fE ? efield : NULL) , (NULL != fH ? hfield : NULL), work); */
 	if(NULL != fE){
 		fE[0] = efield[0].real();
 		fE[1] = efield[1].real();
@@ -2812,7 +2821,9 @@ std::complex<double>* Simulation_GetCachedField(const Simulation *S, const Layer
 	S4_TRACE("> Simulation_GetCachedField(S=%p, layer=%p) [omega=%f]\n", S, layer, S->omega[0]);
 	std::complex<double> *P = NULL;
 	FieldCache *f = S->field_cache;
+    printf("Given Layer = %s\n", layer->name);
 	while(NULL != f){
+        printf("Other layer = %s\n", f->layer->name);
 		if(layer == f->layer && S->n_G == f->n){
 			P = f->P;
 			break;

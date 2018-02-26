@@ -61,6 +61,8 @@ CHOLMOD_LIB = -lcholmod -lamd -lcolamd -lcamd -lccolamd
 #MPI_LIB = -L/usr/lib64/openmpi/lib/libmpi.so
 
 # Enable S4_TRACE debugging
+# values of 1, 2, 3 enable debugging, with verbosity increasing at 
+# value increases. 0 to disable
 S4_DEBUG = 2
 
 # Specify custom compilers if needed
@@ -82,7 +84,7 @@ S4r_LIBNAME = $(OBJDIR)/libS4r.a
 
 #### Set the compilation flags
 
-CPPFLAGS = -I. -IS4 -IS4/RNP -IS4/kiss_fft
+CPPFLAGS = -I. -IS4 -IS4/RNP -IS4/kiss_fft 
 
 ifeq ($(S4_DEBUG), 1)
 CPPFLAGS += -DENABLE_S4_TRACE
