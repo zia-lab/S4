@@ -2291,18 +2291,41 @@ int Simulation_GetField(Simulation *S, const double r[3], double fE[6], double f
 	TranslateAmplitudes(S->n_G, Lbands->q, L->thickness, dz, ab);
 	std::complex<double> efield[3], hfield[3];
     // I need to jump in right here and do a few things
-    // 1) Modify GetFieldAtPoint to accept the vector field projection operator
-    // P as an argument. Don't forget to modify the header file
-    // 2) 
+    // TODO:
+    // 2) Add option to options struct to switch between two methods for
+    //    computing fields 
 	std::complex<double> *P = Simulation_GetCachedField((const Simulation *)S, (const Layer *)L);
-	GetFieldAtPointImproved(
-		S->n_G, S->solution->kx, S->solution->ky, std::complex<double>(S->omega[0],S->omega[1]),
-		Lbands->q, Lbands->kp, Lbands->phi, Lbands->Epsilon_inv, P, Lbands->epstype,
-		ab, r, (NULL != fE ? efield : NULL) , (NULL != fH ? hfield : NULL), work);
-	/* GetFieldAtPoint( */
+    // TODO: need to get the real space epsilon values at this point using the
+    // Layer struct and pass them into this function
+    const double xy[2] = {r[0], r[1]};
+    const Material *M;
+    int shape_index;
+    int result  = Pattern_GetShape(&(L->pattern), xy, &shape_index, NULL);
+    if (result == 0) {
+        printf("Found shape containing this point!!\n");
+        printf("Shape index: %d\n", shape_index);
+        printf("Material Index: %d\n", L->pattern.shapes[shape_index].tag);
+        M = Simulation_GetMaterialByIndex(S, L->pattern.shapes[shape_index].tag);
+    } else {
+        printf("No shape containing this point, using background\n");
+        M = Simulation_GetMaterialByName(S, L->material, NULL);
+    }
+    printf("Material Name: %s\n", M->name);
+    // If M.type = 0 then epsilon is a scalar, if M.type = 1 epsilon is a
+    // tensor. IDK what to do with a tensor epsilon
+    if(0 != M->type){
+        return -1;
+    }
+    std::complex<double> epsilon(M->eps.s[0], M->eps.s[1]);    
+    // Now that I had the shape, I need to figure out what material it contains
+	/* GetFieldAtPointImproved( */
 	/* 	S->n_G, S->solution->kx, S->solution->ky, std::complex<double>(S->omega[0],S->omega[1]), */
-	/* 	Lbands->q, Lbands->kp, Lbands->phi, Lbands->Epsilon_inv, Lbands->epstype, */
+	/* 	Lbands->q, Lbands->kp, Lbands->phi, Lbands->Epsilon_inv, P, Lbands->Epsilon2, epsilon, Lbands->epstype, */
 	/* 	ab, r, (NULL != fE ? efield : NULL) , (NULL != fH ? hfield : NULL), work); */
+	GetFieldAtPoint(
+		S->n_G, S->solution->kx, S->solution->ky, std::complex<double>(S->omega[0],S->omega[1]),
+		Lbands->q, Lbands->kp, Lbands->phi, Lbands->Epsilon_inv, Lbands->epstype,
+		ab, r, (NULL != fE ? efield : NULL) , (NULL != fH ? hfield : NULL), work);
 	if(NULL != fE){
 		fE[0] = efield[0].real();
 		fE[1] = efield[1].real();

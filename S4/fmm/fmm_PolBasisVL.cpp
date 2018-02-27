@@ -53,6 +53,9 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
 	const int nn = n*n;
 	const double unit_cell_size = Simulation_GetUnitCellSize(S);
 	const int *G = S->solution->G;
+    // Number of dimensions is 1 if 2nd component of first lattice vector is
+    // zero and first component of 2nd lattice vector is 0 in real space,
+    // otherwise its 2D
 	const int ndim = (0 == S->Lr[2] && 0 == S->Lr[3]) ? 1 : 2;
 	double *ivalues = (double*)S4_malloc(sizeof(double)*(2+10)*(L->pattern.nshapes+1));
 	double *values = ivalues + 2*(L->pattern.nshapes+1);
@@ -110,21 +113,40 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
 				ngrid[i] = fft_next_fast_size(ngrid[i]);
 			}
 		}
+        // Number of real space grid points
 		const int ng2 = ngrid[0]*ngrid[1];
-		
+	
+        // Memory workspace array N = number of basis terms, ng = number of
+        // real space grid points for vector field. Has length 6N^2 + 4*ng 
 		work = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>)*(6*nn + 4*ng2));
+        // mDelta stored from beginning of workspace to N^2
+        // mDelta is an NxN matrix
+        // mDelta = work[0:N^2]
 		mDelta = work;
+        // Eta is and NxN matrix
+        // Eta = work[N^2:2N^2]
 		Eta = mDelta + nn;
+        // P is an NxN matrix. 
+        // P = work[2N^2:3N^2]
 		P = Eta + nn;
+        // Ffrom is the real space thing we will be Fourier transforming
+        // Ffrom = work[3N^2:7N^2]
 		std::complex<double> *Ffrom = P + 4*nn; // Fourier source
+        // This is where the results of the fourier transform are placed.
+        // Ffrom = work[7N^2:7N^2 + ng]
 		std::complex<double> *Fto = Ffrom + ng2; // Fourier dest
+        // The real space vector field. 
+        // par = work[7N^2 + ng: 7N^2 + 2ng]
 		std::complex<double> *par = Fto + ng2; // real space parallel vector
 
 		// Generate the vector field
 		const double ing2 = 1./(double)ng2;
 		int ii[2];
-		
-		double *vfield = (double*)S4_malloc(sizeof(double)*2*ng2);
+	
+        // Creates workspace for the vector field. The vector field in general
+        // has two components, so we need to store two doubles for every grid
+        // point
+        double *vfield = (double*)S4_malloc(sizeof(double)*2*ng2);
 		if(0 == S->Lr[2] && 0 == S->Lr[3]){ // 1D, generate the trivial field
 			double nv[2] = {-S->Lr[1], S->Lr[0]};
 			double nva = hypot(nv[0],nv[1]);
@@ -139,7 +161,7 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
 			S4_VERB(1, "Generating polarization vector field of size %d x %d\n", ngrid[0], ngrid[1]);
             // 2nd argument here determines the type of vector field. 0 means
             // tangential, 1 means normal. Normal vector fields are currently
-            // broken
+            // broken. This puts the vector field in the vfield array
 			int error = Pattern_GenerateFlowField(&L->pattern, 0, S->Lr, ngrid[0], ngrid[1], vfield);
 			
 			if(0 != error){
@@ -192,8 +214,9 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
 		}
 			
 	    // Here vfield contains the real space vector field. It seems to be
-        // copied exactly into par	
-		for(ii[1] = 0; ii[1] < ngrid[1]; ++ii[1]){
+        // copied exactly into par. This is necessary because par is of complex
+        // double type, while vfield is just of type double. 
+        for(ii[1] = 0; ii[1] < ngrid[1]; ++ii[1]){
 			for(ii[0] = 0; ii[0] < ngrid[0]; ++ii[0]){
 				par[2*(ii[0]+ii[1]*ngrid[0])+0] = vfield[2*(ii[0]+ii[1]*ngrid[0])+0];
 				par[2*(ii[0]+ii[1]*ngrid[0])+1] = vfield[2*(ii[0]+ii[1]*ngrid[0])+1];
@@ -220,13 +243,19 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
 
 			for(int j = 0; j < n; ++j){
 				for(int i = 0; i < n; ++i){
+                    // Get indices of lattice points in Fourier space
 					int f[2] = {G[2*i+0]-G[2*j+0],G[2*i+1]-G[2*j+1]};
+                    // Shift so everything its indexed from 0
 					if(f[0] < 0){ f[0] += ngrid[0]; }
 					if(f[1] < 0){ f[1] += ngrid[1]; }
 					P[Erow+i+(Ecol+j)*n2] = ing2 * Fto[f[1]+f[0]*ngrid[1]];
 				}
 			}
 		}
+        // The real and
+        // imaginary parts of the vector field are stored adjacent to one
+        // another in vfield, 
+
 		fft_plan_destroy(plan);
 
 		if(NULL != vfield){ S4_free(vfield); }
@@ -240,7 +269,7 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
 		Eta = mDelta + nn;
 	}
 	
-	// Generate the Fourier matrix of epsilon^{-1}
+	// Generate the Fourier matrix of epsilon^{-1}. See eqns 6,7,8 of paper
 	for(int j = 0; j < n; ++j){
 		for(int i = 0; i < n; ++i){
 			int dG[2] = {G[2*i+0]-G[2*j+0],G[2*i+1]-G[2*j+1]};
