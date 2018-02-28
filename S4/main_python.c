@@ -1571,6 +1571,7 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 		"SubpixelSmoothing",         /* bool */
 		"ConserveMemory",            /* bool */
         "BasisFieldDumpPrefix",      /* str */
+        "WeismannFormulation",       /* bool */
 		NULL
 	};
 	int verbosity = -1;
@@ -1580,6 +1581,7 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 	struct lanczos_smoothing_settings lanczos_smoothing;
 	int subpixel_smoothing = -1;
 	int conserve_memory = -1;
+	int use_weismann_formulation = -1;
 
 	lanczos_smoothing.set = 0;
 
@@ -1588,7 +1590,7 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 	const char *basisfieldprefix = NULL;
 
 	if(!PyArg_ParseTupleAndKeywords(
-		args, kwds, "|isO&iO&sO&O&O&s:SetOptions", kwlist,
+		args, kwds, "|isO&iO&sO&O&O&sO&:SetOptions", kwlist,
 		&verbosity,
 		&lattice_truncation,
 		&bool_converter, &discretized_epsilon,
@@ -1598,7 +1600,8 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 		&lanczos_converter, &lanczos_smoothing,
 		&bool_converter, &subpixel_smoothing,
 		&bool_converter, &conserve_memory,
-        &basisfieldprefix
+        &basisfieldprefix,
+		&bool_converter, &use_weismann_formulation
 	)){ return NULL; }
 	if(verbosity >= 0){
 		if(verbosity > 9){ verbosity = 9; }
@@ -1665,6 +1668,9 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 	}
 	if(conserve_memory >= 0){
 		self->S.options.use_less_memory = conserve_memory;
+	}
+	if(use_weismann_formulation >= 0){
+		self->S.options.use_weismann_formulation = use_weismann_formulation;
 	}
 	Py_RETURN_NONE;
 }

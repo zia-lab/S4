@@ -159,6 +159,9 @@ typedef struct Options_{
 	// be stored in memory when possible.
 	int use_less_memory;
 
+    // Use Weismann's improved formulation for the fields
+    int use_weismann_formulation;
+
 	double lanczos_smoothing_width;
 	int lanczos_smoothing_power;
 } Options;
