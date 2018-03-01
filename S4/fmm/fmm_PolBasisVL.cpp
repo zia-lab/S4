@@ -30,6 +30,12 @@
 # include "../RNP/LinearSolve_lapack.h"
 #endif
 #include "fmm.h"
+#ifdef DUMP_MATRICES
+# define RNP_OUTPUT_MATHEMATICA
+# define DUMP_STREAM std::cerr
+//# define DUMP_STREAM (omega.real() > 1.91637 ? std::cerr : std::cout)
+# include <IO.h>
+#endif
 
 #include <iostream>
 #include <limits>
@@ -126,7 +132,8 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
         // Eta is and NxN matrix
         // Eta = work[N^2:2N^2]
 		Eta = mDelta + nn;
-        // P is an NxN matrix. 
+        // P is an NxN matrix in real space, which is why we only allocate N^2
+        // elements for it here. After Fourier transforming it becomes larger
         // P = work[2N^2:3N^2]
 		P = Eta + nn;
         // Ffrom is the real space thing we will be Fourier transforming
@@ -161,7 +168,9 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
 			S4_VERB(1, "Generating polarization vector field of size %d x %d\n", ngrid[0], ngrid[1]);
             // 2nd argument here determines the type of vector field. 0 means
             // tangential, 1 means normal. Normal vector fields are currently
-            // broken. This puts the vector field in the vfield array
+            // broken. This puts the vector field for the patterning of his
+            // layer into the vfield array
+            // Lr is the array containing the real space lattice vectors
 			int error = Pattern_GenerateFlowField(&L->pattern, 0, S->Lr, ngrid[0], ngrid[1], vfield);
 			
 			if(0 != error){
@@ -241,6 +250,13 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
 			}
 			fft_plan_exec(plan);
 
+            // This is now copying the results of the Fourier transform into P,
+            // which is a just a pointer to a particular location in the
+            // worksapce array. P in real space in NxN, but here we are
+            // computing a larger matrix and just storing it in P. This means
+            // we are actually overwriting parts of Ffrom, but that's okay
+            // because we already Fourier transformed it and don't need it
+            // anymore
 			for(int j = 0; j < n; ++j){
 				for(int i = 0; i < n; ++i){
                     // Get indices of lattice points in Fourier space
@@ -286,6 +302,10 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
 		}
 	}
 
+#ifdef DUMP_MATRICES
+        DUMP_STREAM << "Eta:" << std::endl;
+        RNP::IO::PrintMatrix(n,n,Eta,n, DUMP_STREAM) << std::endl << std::endl;
+#endif
 	// mDelta will contain -Delta = inv(Eta) - Epsilon
 	// Epsilon2 still only has Epsilon along its diagonal
 	RNP::TBLAS::SetMatrix<'A'>(n,n, 0.,1., mDelta,n);
