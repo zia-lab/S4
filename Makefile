@@ -85,20 +85,23 @@ S4r_LIBNAME = $(OBJDIR)/libS4r.a
 #### Set the compilation flags
 
 CPPFLAGS = -I. -IS4 -IS4/RNP -IS4/kiss_fft 
-
+ 
 ifeq ($(S4_DEBUG), 1)
-CPPFLAGS += -DENABLE_S4_TRACE
+CPPFLAGS += -DENABLE_S4_TRACE 
+CPPFLAGS += -ggdb 
 endif
 
 ifeq ($(S4_DEBUG), 2)
 CPPFLAGS += -DENABLE_S4_TRACE
 CPPFLAGS += -DDUMP_MATRICES
+CPPFLAGS += -ggdb 
 endif
 
 ifeq ($(S4_DEBUG), 3)
 CPPFLAGS += -DENABLE_S4_TRACE
 CPPFLAGS += -DDUMP_MATRICES
 CPPFLAGS += -DDUMP_MATRICES_LARGE
+CPPFLAGS += -ggdb 
 endif
 
 ifdef BLAS_LIB
