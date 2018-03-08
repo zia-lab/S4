@@ -1281,9 +1281,6 @@ void GetFieldAtPointImproved(
 	const std::complex<double> z_one(1.);
 	const size_t n2 = 2*n;
 
-    printf("INSIDE RCWA.CPP GetFieldAtPointImproved\n");
-    printf("P = %p\n", P);
-    printf("W = %p\n", W);
 #ifdef DUMP_MATRICES
     if(NULL != P){
         DUMP_STREAM << "P:" << std::endl;
@@ -1292,8 +1289,6 @@ void GetFieldAtPointImproved(
         RNP::IO::PrintMatrix(n2,n2,W,n2, DUMP_STREAM) << std::endl << std::endl;
     }
 #endif
-    printf("INSIDE RCWA.CPP GetFieldAtPointImproved\n");
-    printf("Epsilon2 = %p\n", Epsilon2);
 #ifdef DUMP_MATRICES
     if(NULL != W){
         DUMP_STREAM << "Epsilon2:" << std::endl;
