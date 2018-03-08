@@ -2297,10 +2297,16 @@ int Simulation_GetField(Simulation *S, const double r[3], double fE[6], double f
 	//RNP::IO::PrintVector(n4, ab, 1);
 	TranslateAmplitudes(S->n_G, Lbands->q, L->thickness, dz, ab);
 	std::complex<double> efield[3], hfield[3];
+    std::complex<double> *P = NULL;
+    std::complex<double> *W = NULL;
+    std::complex<double> epsilon = 0;
     if(S->options.use_weismann_formulation > 0) {
         // I need to jump in right here and do a few thing
         std::complex<double> *P = Simulation_GetCachedField((const Simulation *)S, (const Layer *)L);
         std::complex<double> *W = Simulation_GetCachedW((const Simulation *)S, (const Layer *)L);
+        printf("Layer = %s\n", L->name);
+        printf("P = %p\n", P);
+        printf("W = %p\n", W);
         const double xy[2] = {r[0], r[1]};
         const Material *M;
         int shape_index;
@@ -2315,9 +2321,10 @@ int Simulation_GetField(Simulation *S, const double r[3], double fE[6], double f
         if(0 != M->type){
             return -1;
         }
-        std::complex<double> epsilon(M->eps.s[0], M->eps.s[1]);    
-        // Now that I had the shape, I need to figure out what material it contains
-        S4_VERB(1, "Using Weismann Formulation");
+        epsilon = std::complex<double>(M->eps.s[0], M->eps.s[1]);    
+    }
+    if(P != NULL && W != NULL){
+        S4_VERB(1, "Using Weismann Formulation\n");
         GetFieldAtPointImproved(
             S->n_G, S->solution->kx, S->solution->ky, std::complex<double>(S->omega[0],S->omega[1]),
             Lbands->q, Lbands->kp, Lbands->phi, Lbands->Epsilon_inv, P, W, Lbands->Epsilon2, epsilon, Lbands->epstype,
@@ -2404,9 +2411,15 @@ int Simulation_GetFieldPlane(Simulation *S, int nxy[2], double zz, double *E, do
 	//RNP::IO::PrintVector(n4, ab, 1);
 	TranslateAmplitudes(S->n_G, Lbands->q, L->thickness, dz, ab);
 	size_t snxy[2] = { nxy[0], nxy[1] };
+    std::complex<double> *P = NULL;
+    std::complex<double> *W = NULL;
+    std::complex<double> *epsilon = NULL;
     if(S->options.use_weismann_formulation > 0) {
-        std::complex<double> *P = Simulation_GetCachedField((const Simulation *)S, (const Layer *)L);
-        std::complex<double> *W = Simulation_GetCachedW((const Simulation *)S, (const Layer *)L);
+        P = Simulation_GetCachedField((const Simulation *)S, (const Layer *)L);
+        W = Simulation_GetCachedW((const Simulation *)S, (const Layer *)L);
+        printf("Layer = %s\n", L->name);
+        printf("P = %p\n", P);
+        printf("W = %p\n", W);
         // TODO: Need to build out an array of epsilon values at each each grid
         // point, and pass this array into GetFieldOnGridImproved so it can be
         // indexed into when computing real space reconstructions of E from
@@ -2421,7 +2434,7 @@ int Simulation_GetFieldPlane(Simulation *S, int nxy[2], double zz, double *E, do
         // sampling points) that is filled with pointers to the correct element
         // of the array containing the unique epsilon values to save space.
         size_t ns = nxy[0]*nxy[1]; 
-        std::complex<double> *epsilon = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>)*ns);
+        epsilon = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>)*ns);
         Material *M;
         int shape_index;
         double du = hypot(S->Lr[0], S->Lr[1])/nxy[0];
@@ -2450,6 +2463,8 @@ int Simulation_GetFieldPlane(Simulation *S, int nxy[2], double zz, double *E, do
                 epsilon[iu+iv*nxy[0]] = eps_val;
             }
         }
+    }
+    if(P != NULL && W != NULL){
         S4_VERB(1, "Using Weismann Formulation\n");
         GetFieldOnGridImproved(
             S->n_G, S->solution->G, S->solution->kx, S->solution->ky, std::complex<double>(S->omega[0],S->omega[1]),
