@@ -159,6 +159,9 @@ typedef struct Options_{
 	// be stored in memory when possible.
 	int use_less_memory;
 
+    // Use Weismann's improved formulation for the fields
+    int use_weismann_formulation;
+
 	double lanczos_smoothing_width;
 	int lanczos_smoothing_power;
 } Options;
@@ -306,7 +309,9 @@ int Simulation_MakeExcitationDipole(Simulation *S, const double k[2], const char
 // Field cache manipulation
 void Simulation_InvalidateFieldCache(Simulation *S);
 std::complex<double>* Simulation_GetCachedField(const Simulation *S, const Layer *layer);
-void Simulation_AddFieldToCache(Simulation *S, const Layer *layer, size_t n, const std::complex<double> *P, size_t Plen);
+std::complex<double>* Simulation_GetCachedW(const Simulation *S, const Layer *layer);
+void Simulation_AddFieldToCache(Simulation *S, const Layer *layer, size_t n, const std::complex<double> *P, size_t Plen,
+                                const std::complex<double> *W, size_t Wlen);
 #endif
 
 //////////////////////// Simulation solutions ////////////////////////

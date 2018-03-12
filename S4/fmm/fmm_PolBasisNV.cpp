@@ -218,7 +218,7 @@ int FMMGetEpsilon_PolBasisNV(const Simulation *S, const Layer *L, const int n, s
 		//free(fftcfg);
 		if(NULL != vfield){ S4_free(vfield); }
 		// Add to cache
-		Simulation_AddFieldToCache((Simulation*)S, L, S->n_G, P, 4*nn);
+		/* Simulation_AddFieldToCache((Simulation*)S, L, S->n_G, P, 4*nn); */
 	}else{
 		// P contains the cached version
 		// We still need temporary space to compute -Delta

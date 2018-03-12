@@ -1504,10 +1504,10 @@ static PyObject *S4Sim_GetFieldsOnGrid(S4Sim *self, PyObject *args, PyObject *kw
 		for(k = 0; k < 2; ++k){
 			PyObject *pk = PyTuple_New(nxy[0]);
 			PyTuple_SetItem(rv, k, pk);
-			for(i = 0; i < nxy[0]; ++i){
+            for(i = 0; i < nxy[0]; ++i){
 				PyObject *pi = PyTuple_New(nxy[1]);
 				PyTuple_SetItem(pk, i, pi);
-				for(j = 0; j < nxy[1]; ++j){
+                for(j = 0; j < nxy[1]; ++j){
 					PyObject *pj = PyTuple_New(3);
 					PyTuple_SetItem(pi, j, pj);
 					for(i3 = 0; i3 < 3; ++i3){
@@ -1571,6 +1571,7 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 		"SubpixelSmoothing",         /* bool */
 		"ConserveMemory",            /* bool */
         "BasisFieldDumpPrefix",      /* str */
+        "WeismannFormulation",       /* bool */
 		NULL
 	};
 	int verbosity = -1;
@@ -1580,6 +1581,7 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 	struct lanczos_smoothing_settings lanczos_smoothing;
 	int subpixel_smoothing = -1;
 	int conserve_memory = -1;
+	int use_weismann_formulation = -1;
 
 	lanczos_smoothing.set = 0;
 
@@ -1588,7 +1590,7 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 	const char *basisfieldprefix = NULL;
 
 	if(!PyArg_ParseTupleAndKeywords(
-		args, kwds, "|isO&iO&sO&O&O&s:SetOptions", kwlist,
+		args, kwds, "|isO&iO&sO&O&O&sO&:SetOptions", kwlist,
 		&verbosity,
 		&lattice_truncation,
 		&bool_converter, &discretized_epsilon,
@@ -1598,7 +1600,8 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 		&lanczos_converter, &lanczos_smoothing,
 		&bool_converter, &subpixel_smoothing,
 		&bool_converter, &conserve_memory,
-        &basisfieldprefix
+        &basisfieldprefix,
+		&bool_converter, &use_weismann_formulation
 	)){ return NULL; }
 	if(verbosity >= 0){
 		if(verbosity > 9){ verbosity = 9; }
@@ -1629,6 +1632,10 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 	}
 
     if(NULL != basisfieldprefix){
+        // const size_t prefix_len = strlen(basisfieldprefix);
+        // char *prefix = (char*)malloc(sizeof(char) * (prefix_len + 1));
+        // strcpy(prefix, basisfieldprefix);
+        // self->S.options.vector_field_dump_filename_prefix = prefix;
         self->S.options.vector_field_dump_filename_prefix = basisfieldprefix;
     }
 
@@ -1661,6 +1668,9 @@ static PyObject *S4Sim_SetOptions(S4Sim *self, PyObject *args, PyObject *kwds){
 	}
 	if(conserve_memory >= 0){
 		self->S.options.use_less_memory = conserve_memory;
+	}
+	if(use_weismann_formulation >= 0){
+		self->S.options.use_weismann_formulation = use_weismann_formulation;
 	}
 	Py_RETURN_NONE;
 }
