@@ -63,14 +63,18 @@ CHOLMOD_LIB = -lcholmod -lamd -lcolamd -lcamd -lccolamd
 # Enable S4_TRACE debugging
 # values of 1, 2, 3 enable debugging, with verbosity increasing at 
 # value increases. 0 to disable
-S4_DEBUG = 0
+S4_DEBUG = 1
+
+# Specify the paths to the boost include and lib directories
+BOOST_INC = -I./S4/include
+BOOST_LIBS = -L./S4/lib/ -lboost_serialization
 
 # Specify custom compilers if needed
 CXX = g++
 CC  = gcc
 
 #CFLAGS += -O3 -fPIC
-CFLAGS = -O3 -msse3 -msse2 -msse -fPIC
+CFLAGS = -Wall -O3 -msse3 -msse2 -msse -fPIC
 
 # options for Sampler module
 OPTFLAGS = -O3
@@ -84,7 +88,7 @@ S4r_LIBNAME = $(OBJDIR)/libS4r.a
 
 #### Set the compilation flags
 
-CPPFLAGS = -I. -IS4 -IS4/RNP -IS4/kiss_fft 
+CPPFLAGS = -Wall -I. -IS4 -IS4/RNP -IS4/kiss_fft 
  
 ifeq ($(S4_DEBUG), 1)
 CPPFLAGS += -DENABLE_S4_TRACE 
@@ -102,6 +106,10 @@ CPPFLAGS += -DENABLE_S4_TRACE
 CPPFLAGS += -DDUMP_MATRICES
 CPPFLAGS += -DDUMP_MATRICES_LARGE
 CPPFLAGS += -ggdb 
+endif
+
+ifdef BOOST_INC
+	CPPFLAGS += $(BOOST_INC) $(BOOST_LIBS)
 endif
 
 ifdef BLAS_LIB
@@ -129,7 +137,7 @@ ifdef MPI_LIB
 CPPFLAGS += -DHAVE_MPI $(MPI_INC)
 endif
 
-LIBS = $(BLAS_LIB) $(LAPACK_LIB) $(FFTW3_LIB) $(PTHREAD_LIB) $(CHOLMOD_LIB) $(MPI_LIB)
+LIBS = $(BLAS_LIB) $(LAPACK_LIB) $(FFTW3_LIB) $(PTHREAD_LIB) $(CHOLMOD_LIB) $(MPI_LIB) $(BOOST_LIBS)
 
 #### Compilation targets
 
