@@ -3,6 +3,7 @@
 OBJDIR="$1"
 LIBFILE="$2"
 LIBS="$3"
+BOOST_PREFIX="$4"
 
 echo "LIBFILE: $LIBFILE"
 
@@ -13,9 +14,9 @@ from distutils.core import setup, Extension
 #os.environ["CXX"] = "g++"
 
 libs = ['S4', 'stdc++']
-lib_dirs = ['$OBJDIR', 'S4/lib']
+lib_dirs = ['$OBJDIR', '$BOOST_PREFIX/lib']
 libs.extend([lib[2::] for lib in '$LIBS'.split()])
-include_dirs = ['S4/include']
+include_dirs = ['$BOOST_PREFIX/include']
 extra_link_args = ['$LIBFILE']
 
 S4module = Extension('S4',
@@ -23,7 +24,9 @@ S4module = Extension('S4',
 	libraries = libs,
 	library_dirs = lib_dirs,
     include_dirs = include_dirs,
-	extra_link_args = extra_link_args,
+    extra_objects = ['$LIBFILE'],
+	# extra_link_args = extra_link_args,
+    runtime_library_dirs=['$BOOST_PREFIX/lib'],
 	extra_compile_args=['-std=gnu99'] 
 )
 
