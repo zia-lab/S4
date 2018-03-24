@@ -335,6 +335,3 @@ S4_pyext: objdir $(S4_LIBNAME)
 
 clean:
 	rm -rf $(OBJDIR)
-	rm setup.py
-
-
