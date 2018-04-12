@@ -46,10 +46,23 @@ extern "C" {
 
 #include <numalloc.h>
 
+#include <iostream>
+#include <fstream>
+#include <boost/serialization/nvp.hpp>
+#include <boost/serialization/complex.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/xml_iarchive.hpp>
+#include <boost/archive/xml_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+
+namespace bs = boost::serialization;
+
 
 void* S4_malloc(size_t size){ // for debugging
 	void* ret = malloc_aligned(size, 16);
-	//memset(ret, 0x0, size);
+	// memset(ret, 0x0, size);
 	return ret;
 }
 void S4_free(void *ptr){
@@ -57,6 +70,7 @@ void S4_free(void *ptr){
 }
 
 struct LayerBands{
+    int n_G;
 	std::complex<double> *q; // length 2*glist.n
 	std::complex<double> *kp; // size (2*glist.n)^2 (k-parallel matrix)
 	std::complex<double> *phi; // size (2*glist.n)^2
@@ -64,12 +78,232 @@ struct LayerBands{
 	std::complex<double> *Epsilon_inv; // size (glist.n)^2 inverse of usual dielectric Fourier coupling matrix. 
                                        // This is the same as \hat{\eta} in the notation of the paper i.e the Fourier
                                        // transform of 1/epsilon, and not 1 / \hat{epsilon}
+                                       // TODO: Add big square matrix in eqn 35
+                                       // to this struct
 	// max total size needed: 2n+13nn
 	int epstype;
+
+    template <typename Archive>
+    void serialize(Archive& ar, const unsigned int version)
+    {
+        bs::split_member(ar, *this, version);
+    }
+    template<class Archive>
+    void save(Archive &ar, const unsigned int version) const
+    {
+        int nn = n_G*n_G;
+        int n2 = 2*n_G;
+        int nn4 = 4*nn;
+        S4_TRACE("Band nG: %d\n", n_G);
+        ar & bs::make_nvp("n_G",n_G);
+        S4_TRACE("Serialized n_G!\n");
+        // save phi
+        int phi_is_null;
+        if(phi == NULL){
+            phi_is_null = 1;
+            S4_TRACE("Phi is NULL\n");
+            ar & bs::make_nvp("phi_is_null",phi_is_null);
+        } else{
+            phi_is_null = 0;
+            ar & bs::make_nvp("phi_is_null",phi_is_null);
+        }
+        int kp_is_null;
+        if(kp == NULL){
+            kp_is_null = 1;
+            S4_TRACE("Phi is NULL\n");
+            ar & bs::make_nvp("kp_is_null",kp_is_null);
+        } else{
+            kp_is_null = 0;
+            ar & bs::make_nvp("kp_is_null",kp_is_null);
+        }
+        if(phi != NULL){
+            S4_TRACE("Serializing phi = %p\n", phi);
+            // for (size_t i = 0; i < nn4; i++) {
+            //     ar & bs::make_nvp("phi",phi[i]);
+            // }
+            ar & bs::make_nvp("phi", bs::make_array(phi, nn4));
+            S4_TRACE("Serialized phi = %p\n", phi);
+        }
+        if(kp != NULL){
+            S4_TRACE("Serializing kp = %p\n", kp);
+            // for (size_t i = 0; i < nn4; i++) {
+            //     ar & bs::make_nvp("kp",kp[i]);
+            // }
+            ar & bs::make_nvp("kp", bs::make_array(kp, nn4));
+            S4_TRACE("Serialized kp = %p\n", kp);
+        }
+        // save q
+        S4_TRACE("Serializing q\n");
+        // for (size_t i = 0; i < n2; i++) {
+        //     ar & bs::make_nvp("q",q[i]);
+        // }
+        ar & bs::make_nvp("q", bs::make_array(q, n2));
+        S4_TRACE("Serialized q\n");
+        // save Epsilon2
+        S4_TRACE("Serializing Epsilon2\n");
+        // for (size_t i = 0; i < nn4; i++) {
+        //     ar & bs::make_nvp("Epsilon2",Epsilon2[i]);
+        // }
+        ar & bs::make_nvp("Epsilon2", bs::make_array(Epsilon2, nn4));
+        S4_TRACE("Serialized Epsilon2\n");
+        // save Epsilon_inv
+        S4_TRACE("Serializing Epsilon_inv\n");
+        // for (size_t i = 0; i < nn; i++) {
+        //     ar & bs::make_nvp("Epsilon_inv",Epsilon_inv[i]);
+        // }
+        ar & bs::make_nvp("Epsilon_inv", bs::make_array(Epsilon_inv, nn));
+        S4_TRACE("Serialized Epsilon_inv\n");
+        // Finally save epstype
+        S4_TRACE("Serializing epstype\n");
+        ar & bs::make_nvp("epstype",epstype);
+        S4_TRACE("Serialized epstype\n");
+    }
+
+    template<class Archive>
+    void load(Archive &ar, const unsigned int version)
+    {
+        S4_TRACE("Inside Band Load\n");
+        ar & bs::make_nvp("n_G",n_G);
+        int phi_is_null;
+        ar & bs::make_nvp("phi_is_null",phi_is_null);
+        S4_TRACE("Loaded phi_is_null\n");
+        S4_TRACE("phi_is_null = %d\n", phi_is_null);
+        int kp_is_null;
+        ar & bs::make_nvp("kp_is_null",kp_is_null);
+        S4_TRACE("Loaded kp_is_null\n");
+        S4_TRACE("kp_is_null = %d\n", kp_is_null);
+        // Free memory and re-allocate 
+        // int nn = n_G*n_G;
+        // int n2 = 2*n_G;
+        // int nn4 = 4*nn;
+        const int n = n_G;
+        const int n2 = 2*n;
+        const int nn = n*n;
+        const int n2n2 = n2*n2;
+
+        size_t kp_size = n2n2;
+        size_t phi_size = n2n2;
+        size_t Epsilon_inv_size = nn;
+        size_t Epsilon2_size = n2n2;
+        if(kp_is_null == 1){
+            S4_TRACE("Load kp is NULL\n");
+            kp_size = 0;
+        }
+        if(phi_is_null == 1){
+            S4_TRACE("Load Phi is NULL\n");
+            phi_size = 0;
+        } 
+
+        q = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>)*(
+        2*n + // for q
+        kp_size + phi_size + Epsilon_inv_size + Epsilon2_size
+        ));
+        kp = q + n2;
+        phi = kp + kp_size;
+        Epsilon_inv = phi + phi_size;
+        Epsilon2 = Epsilon_inv + Epsilon_inv_size;
+
+        if(phi_is_null == 0){
+            S4_TRACE("Load Phi is NOT NULL\n");
+            // phi = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>)*nn4);
+            // for (size_t i = 0; i < phi_size; i++) {
+            //     ar & bs::make_nvp("phi",phi[i]);
+            // }
+            ar & bs::make_nvp("phi", bs::make_array(phi, phi_size));
+            S4_TRACE("Loaded phi!\n");
+        } else{
+            S4_TRACE("Load Phi is NULL\n");
+            // ar & bs::make_nvp("phi",phi);
+            phi = NULL;
+        }
+        if(kp_is_null == 0){
+            S4_TRACE("Load kp is NOT NULL\n");
+            // kp = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>)*nn4);
+            // for (size_t i = 0; i < kp_size; i++) {
+            //     ar & bs::make_nvp("kp",kp[i]);
+            // }
+            ar & bs::make_nvp("kp", bs::make_array(kp, kp_size));
+            S4_TRACE("Loaded kp!\n");
+        } else{
+            S4_TRACE("Load kp is NULL\n");
+            // ar & bs::make_nvp("kp",kp);
+            kp = NULL;
+        }
+        // // free(q);
+        // q = NULL;
+        // q = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>)*n2);
+        // // free(kp);
+        // kp = NULL;
+        // kp = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>)*nn4);
+        // // free(phi);
+        // phi = NULL;
+        // // free(Epsilon2);
+        // Epsilon2 = NULL;
+        // Epsilon2 = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>)*nn4);
+        // // free(Epsilon_inv);
+        // Epsilon_inv = NULL;
+        // Epsilon_inv = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>)*nn);
+        S4_TRACE("Allocated band memory!\n");
+           
+        // Now populate the arrays. Order here matters
+        // for (size_t i = 0; i < n2; i++) {
+        //     ar & bs::make_nvp("q",q[i]);
+        // }
+        ar & bs::make_nvp("q", bs::make_array(q, n2));
+        S4_TRACE("Loaded q!\n");
+        // for (size_t i = 0; i < Epsilon2_size; i++) {
+        //     ar & bs::make_nvp("Epsilon2",Epsilon2[i]);
+        // }
+        ar & bs::make_nvp("Epsilon2", bs::make_array(Epsilon2, Epsilon2_size));
+        S4_TRACE("Loaded Epsilon2!\n");
+        // for (size_t i = 0; i < Epsilon_inv_size; i++) {
+        //     ar & bs::make_nvp("Epsilon_inv",Epsilon_inv[i]);
+        // }
+        ar & bs::make_nvp("Epsilon_inv", bs::make_array(Epsilon_inv, Epsilon_inv_size));
+        S4_TRACE("Loaded Epsilon_inv!\n");
+        // Finally load epstype
+        ar & bs::make_nvp("epstype",epstype);
+        S4_TRACE("Loaded epstype!\n");
+    }
 };
+
 struct LayerSolution{
+    int n_G;
 	std::complex<double> *ab; // length 2*glist.n
 	// total size needed: 4n
+    template <typename Archive>
+    void serialize(Archive& ar, const unsigned int version)
+    {
+        bs::split_member(ar, *this, version);
+    }
+    template<class Archive>
+    void save(Archive &ar, const unsigned int version) const
+    {
+        ar & bs::make_nvp("n_G",n_G);
+
+        int n4 = 4*n_G;
+        // for (size_t i = 0; i < n2; i++) {
+        //     ar & bs::make_nvp("ab",ab[i]);
+        // }
+        ar & bs::make_nvp("ab", bs::make_array(ab, n4));
+    }
+
+    template<class Archive>
+    void load(Archive &ar, const unsigned int version)
+    {
+        S4_TRACE("Inside layer soln load\n");
+        ar & bs::make_nvp("n_G",n_G);
+        int n4 = 4*n_G;
+        // ab = NULL;
+        S4_TRACE("Allocating memory for ab\n");
+        ab = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>)*n4);
+        S4_TRACE("Allocated memory for ab\n");
+
+        // for (size_t i = 0; i < n2; i++) {
+        //     ar & bs::make_nvp("ab",ab[i]);
+        // }
+        ar & bs::make_nvp("ab", bs::make_array(ab, n4));
+    }
 };
 
 // This structure caches the Fourier transform of the polarization basis
@@ -77,12 +311,91 @@ struct LayerSolution{
 // scans. Invalidates on SetNumG, and layer patterning
 struct FieldCache{
 	int n;
-	const Layer *layer;
+	char *layer;
 	std::complex<double> *P; // 2n x 2n matrix, allocated along with this structure itself
 	std::complex<double> *W; // 2n x 2n matrix, allocated along with this structure itself.
                              // I'm calling it the "Weismann operator" from eqn 9a of
                              // Weismanns paper
 	FieldCache *next;
+};
+
+BOOST_SERIALIZATION_SPLIT_FREE(FieldCache)
+template<class Archive>
+void save(Archive &ar, const FieldCache &f, const unsigned int version) 
+{
+    int P_is_null;
+    int nn4 = 4*f.n*f.n;
+    if(f.P == NULL){
+        P_is_null = 1;
+    } else {
+        P_is_null = 0;
+    }
+    int W_is_null;
+    if(f.W == NULL){
+        W_is_null = 1;
+    } else {
+        W_is_null = 0;
+    }
+    ar & bs::make_nvp("P_is_null", P_is_null);
+    ar & bs::make_nvp("W_is_null", W_is_null);
+    ar & bs::make_nvp("n", f.n);
+    int name_len = strlen(f.layer);
+    ar & bs::make_nvp("name_len", name_len);
+    ar & bs::make_nvp("layer", bs::make_array(f.layer, name_len));
+    if(f.P != NULL){
+        ar & bs::make_nvp("P", bs::make_array(f.P, nn4));
+    }
+    if(f.W != NULL){
+        ar & bs::make_nvp("W", bs::make_array(f.W, nn4));
+    }
+    int next_is_null;
+    if(f.next == NULL){
+        next_is_null = 1;
+        ar & bs::make_nvp("next_is_null", next_is_null);
+    } else {
+        next_is_null = 0;
+        ar & bs::make_nvp("next_is_null", next_is_null);
+        ar & bs::make_nvp("next", *f.next);
+    }
+};
+
+template<class Archive>
+void load(Archive &ar, FieldCache &f, const unsigned int version)
+{
+    int P_is_null;
+    int W_is_null;
+    ar & bs::make_nvp("P_is_null", P_is_null);
+    ar & bs::make_nvp("W_is_null", W_is_null);
+    S4_TRACE("FieldCache.load: P_is_null = %d\n", P_is_null);
+    S4_TRACE("FieldCache.load: W_is_null = %d\n", W_is_null);
+    ar & bs::make_nvp("n", f.n);
+    S4_TRACE("FieldCache.load: f.n = %d\n", f.n);
+    int name_len;
+    ar & bs::make_nvp("name_len", name_len);
+    S4_TRACE("FieldCache.load: name_len = %d\n", name_len);
+    f.layer = (char*)S4_malloc(sizeof(char)*name_len);
+    ar & bs::make_nvp("layer", bs::make_array(f.layer, name_len));
+    int nn4 = 4*f.n*f.n;
+    if(P_is_null == 0){
+        f.P = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>)*nn4);
+        ar & bs::make_nvp("P", bs::make_array(f.P, nn4));
+    } else {
+        f.P = NULL;
+    }
+    if(W_is_null == 0){
+        f.W = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>)*nn4);  
+        ar & bs::make_nvp("W", bs::make_array(f.W, nn4));
+    } else {
+        f.W = NULL;
+    }
+    int next_is_null;
+    ar & bs::make_nvp("next_is_null", next_is_null);
+    if(next_is_null == 1){
+        f.next = NULL;
+    } else {
+        f.next = (FieldCache*)S4_malloc(sizeof(FieldCache));
+        ar & bs::make_nvp("next", *f.next);
+    }
 };
 
 // Private functions
@@ -263,6 +576,323 @@ void Simulation_Destroy(Simulation *S){
 	// }
 	S4_TRACE("< Simulation_Destroy [omega=%f]\n", S->omega[0]);
 }
+
+BOOST_SERIALIZATION_SPLIT_FREE(Solution)
+template<class Archive>
+void save(Archive &ar, const Solution &soln, const unsigned int version)
+{
+    S4_TRACE("Saving with %d G vecs and %d layers\n", soln.n_G, soln.layer_count);
+    ar & bs::make_nvp("n_G",soln.n_G);
+    ar & bs::make_nvp("layer_count",soln.layer_count);
+
+    // for (size_t i = 0; i < 2*soln.n_G; i++) {
+    //     ar & bs::make_nvp("G",soln.G[i]);
+    // }
+    ar & bs::make_nvp("G", bs::make_array(soln.G, 2*soln.n_G));
+    LayerBands** Lbands = (LayerBands**)soln.layer_bands;
+    LayerSolution** Lsoln = (LayerSolution**)soln.layer_solution;
+    for(size_t i = 0; i < soln.layer_count; i++){
+        // ar & bs::make_nvp("Lbands",Lbands[i]);
+        ar & bs::make_nvp("Lbands",*Lbands[i]);
+    }
+    for(size_t i = 0; i < soln.layer_count; i++){
+        // ar & bs::make_nvp("Lsoln",Lsoln[i]);
+        ar & bs::make_nvp("Lsoln",*Lsoln[i]);
+    }
+    // for (size_t i = 0; i < soln.n_G; i++) {
+    //     ar & bs::make_nvp("kx",soln.kx[i]);
+    // }
+    ar & bs::make_nvp("kx", bs::make_array(soln.kx, soln.n_G));
+    // for (size_t i = 0; i < soln.n_G; i++) {
+    //     ar & bs::make_nvp("ky",soln.ky[i]);
+    // }
+    ar & bs::make_nvp("ky", bs::make_array(soln.ky, soln.n_G));
+}
+
+template<class Archive>
+void load(Archive &ar, Solution &soln, const unsigned int version)
+{
+
+    S4_TRACE("Inside solution load\n");
+    ar & bs::make_nvp("n_G",soln.n_G);
+    ar & bs::make_nvp("layer_count",soln.layer_count);
+    // S4_TRACE("tmpnG: %d\n", n_G);
+    // S4_TRACE("layer_count: %d\n", layer_count);
+    S4_TRACE("Loaded ng and layer count\n");
+
+    // if(soln.G != NULL){
+    //     S4_TRACE("FREEING G\n");
+    //     free(soln.G);
+    //     soln.G = NULL;
+    // }
+    soln.G = (int*)S4_malloc(sizeof(int*)*2*soln.n_G);
+    // layer_bands and layer_solution are stored in the same
+    // contiguous memory space
+    // if(soln.layer_bands != NULL){
+    //     S4_TRACE("FREEING LAYER_BANDS\n");
+    //     free(soln.layer_bands);
+    //     soln.layer_bands = NULL;
+    // }
+    soln.layer_bands = (void**)S4_malloc(sizeof(void*)*2*soln.layer_count);
+    soln.layer_solution = soln.layer_bands + soln.layer_count;
+    // for(int i = 0; i < 2*soln.layer_count; ++i){
+    //     soln.layer_bands[i] = NULL;
+    //     // soln.layer_bands[i] = (LayerBands*)S4_malloc(sizeof(LayerBands));
+    // }
+    S4_TRACE("Allocating band memory and layer solution memory\n");
+    // LayerBands** start = soln.layer_bands;
+    for(int i = 0; i < soln.layer_count; ++i){
+        // S4_TRACE("layer index = %d\n", i);
+        // LayerBands* pB = (LayerBands*)soln.layer_bands[i];
+        // pB = (LayerBands*)S4_malloc(sizeof(LayerBands));
+        // soln.layer_bands[i] = NULL;
+        soln.layer_bands[i] = (LayerBands*)S4_malloc(sizeof(LayerBands));
+        soln.layer_solution[i] = (LayerSolution*)S4_malloc(sizeof(LayerSolution));
+        // *soln.layer_bands = (LayerBands*)S4_malloc(sizeof(LayerBands));
+        // soln.layer_bands++;
+    }
+    // soln.layer_bands = start;
+    S4_TRACE("Allocated band memory and layer solution memory\n");
+    // S4_TRACE("Allocating layer solution memory\n");
+	// // LayerSolution** Lsoln = (LayerSolution**)soln.layer_solution;
+    // for(int i = 0; i < soln.layer_count; ++i){
+    //     // soln.layer_solution[i] = NULL;
+    //     soln.layer_solution[i] = (LayerSolution*)S4_malloc(sizeof(LayerSolution));
+    // }
+    // S4_TRACE("Allocated layer solution memory\n");
+    // kx and ky are stored in the same continous memory space
+    // if(soln.kx != NULL){
+    //     free(soln.kx);
+    //     soln.kx = NULL;
+    // }
+    soln.kx = (double*)S4_malloc(sizeof(double)*2*soln.n_G);
+    soln.ky = soln.kx+soln.n_G;
+    S4_TRACE("Allocated memory\n");
+        
+    S4_TRACE("nG on struct: %d\n", soln.n_G);
+    // for (size_t i = 0; i < 2*soln.n_G; i++) {
+    //     ar & bs::make_nvp("G",soln.G[i]);
+    // }
+    ar & bs::make_nvp("G", bs::make_array(soln.G, 2*soln.n_G));
+    S4_TRACE("Loaded G\n");
+    LayerBands** Lbands = (LayerBands**)soln.layer_bands;
+    LayerSolution** Lsoln = (LayerSolution**)soln.layer_solution;
+    for(size_t i = 0; i < soln.layer_count; i++){
+        ar & bs::make_nvp("Lbands",*Lbands[i]);
+    }
+    S4_TRACE("Loaded bands\n");
+    // We can index from zero
+    S4_TRACE("Beginning solution load\n");
+    for(size_t i = 0; i < soln.layer_count; i++){
+        ar & bs::make_nvp("Lsoln",*Lsoln[i]);
+    }
+    S4_TRACE("Loaded layer soln\n");
+    // for (size_t i = 0; i < soln.n_G; i++) {
+    //     ar & bs::make_nvp("kx",soln.kx[i]);
+    // }
+    ar & bs::make_nvp("kx", bs::make_array(soln.kx, soln.n_G));
+    S4_TRACE("Loaded kx\n");
+    // for (size_t i = 0; i < soln.n_G; i++) {
+    //     ar & bs::make_nvp("ky",soln.ky[i]);
+    // }
+    ar & bs::make_nvp("ky", bs::make_array(soln.ky, soln.n_G));
+    S4_TRACE("Loaded ky\n");
+    S4_TRACE("!!! Solution loading complete !!!\n");
+}
+
+int Simulation_SaveSolution(const Simulation *S, const char *fname){
+	S4_TRACE("> Simulation_SaveSolution(S=%p, layer_bands=%p (%p), layer_solution=%p (%p)) [omega=%f]\n",
+		S,
+		S->solution->layer_bands, (NULL != S->solution->layer_bands ? *S->solution->layer_bands : NULL), 
+        S->solution->layer_solution, (NULL != S->solution->layer_solution ? *S->solution->layer_solution : NULL),
+        S->omega[0]);
+    // We need to quickly set n_G on the solution, all the bands and //
+    // all the layer solutions because the serialization code needs i  t
+    // S4_TRACE("Filename: ");                                              
+    // while (*fname != '\0') {                                           
+    //     S4_TRACE("%c\n", *(fname++));
+    // }
+    // S4_TRACE("\n");
+    Solution *soln = S->solution;
+    FieldCache *fcache = S->field_cache;
+    LayerBands** Lbands = (LayerBands**)soln->layer_bands;
+    LayerSolution** Lsoln = (LayerSolution**)soln->layer_solution;
+    soln->n_G = S->n_G;
+    S4_TRACE("Simulation n_G: %d\n", S->n_G);
+    S4_TRACE("Solution nG: %d\n", soln->n_G);
+    S4_TRACE("Solution layer_count: %d\n", soln->layer_count);
+
+    for(int i = 0; i < soln->layer_count; i++){
+        Lbands[i]->n_G = soln->n_G;
+        Lsoln[i]->n_G = soln->n_G;
+    }
+    // make an archive
+    std::ofstream ofs(fname, std::ios_base::out | std::ios_base::binary);
+    if (!ofs.good()){
+        return 3;
+    }
+    int len = strlen(fname);
+    const char *last_three = &fname[len-3];
+    int fcache_is_null;
+    if(strcmp(last_three, "xml") == 0){
+        S4_TRACE("xml\n");
+        boost::archive::xml_oarchive oa(ofs);
+        oa << bs::make_nvp("Solution", *soln);
+        // don't dereference a potentially NULL pointer
+        if(fcache == NULL){
+            fcache_is_null = 1;
+            oa << bs::make_nvp("FieldCache_is_null", fcache_is_null);
+        } else {
+            fcache_is_null = 0;
+            oa << bs::make_nvp("FieldCache_is_null", fcache_is_null);
+            oa << bs::make_nvp("FieldCache", *fcache);
+        }
+    } else if(strcmp(last_three, "txt") == 0) {
+        S4_TRACE("txt\n");
+        boost::archive::text_oarchive oa(ofs);
+        oa << bs::make_nvp("Solution", *soln);
+        if(fcache == NULL){
+            fcache_is_null = 1;
+            oa << bs::make_nvp("FieldCache_is_null", fcache_is_null);
+        } else {
+            fcache_is_null = 0;
+            oa << bs::make_nvp("FieldCache_is_null", fcache_is_null);
+            oa << bs::make_nvp("FieldCache", *fcache);
+        }
+    } else if(strcmp(last_three, "bin") == 0) {
+        S4_TRACE("bin\n");
+        boost::archive::binary_oarchive oa(ofs);
+        oa << bs::make_nvp("Solution", *(soln));
+        if(fcache == NULL){
+            fcache_is_null = 1;
+            oa << bs::make_nvp("FieldCache_is_null", fcache_is_null);
+        } else {
+            fcache_is_null = 0;
+            oa << bs::make_nvp("FieldCache_is_null", fcache_is_null);
+            oa << bs::make_nvp("FieldCache", *fcache);
+        }
+    } else {
+        S4_TRACE("Bad extension\n");
+        return 2; 
+    }
+    ofs.close();
+	S4_TRACE("< Simulation_SaveSolution(S=%p, layer_bands=%p (%p), layer_solution=%p (%p)) [omega=%f]\n",
+		S,
+		S->solution->layer_bands, (NULL != S->solution->layer_bands ? *S->solution->layer_bands : NULL), 
+        S->solution->layer_solution, (NULL != S->solution->layer_solution ? *S->solution->layer_solution : NULL),
+        S->omega[0]);
+    return 0;
+}
+
+int Simulation_LoadSolution(Simulation *S, const char *fname){
+	S4_TRACE("> Simulation_LoadSolution [omega=%f]\n", S->omega[0]);
+    // S4_TRACE("Filename: ");                                              
+    // while (*fname != '\0') {                                           
+    //     S4_TRACE("%c", *(fname++));
+    // }
+    // for(int i=0; i < strlen(fname); i++){
+    //     S4_TRACE("%c", fname[i]);
+    // }
+    // S4_TRACE("\n");
+    S4_TRACE("Simulation before: %p\n", S);
+    S4_TRACE("Simulation nG value: %d\n", S->n_G);
+    S4_TRACE("Solution before: %p\n", S->solution);
+    // S->n_G = 12;
+    S4_TRACE("Initializing solution\n");
+    // S4_TRACE("Solution before: %p\n", S->solution);
+    int error = Simulation_InitSolution(S);
+	// if(NULL == S->solution){
+	// 	S4_TRACE("< Simulation_InitSolution (failed; could not allocate S->solution) [omega=%f]\n", S->omega[0]);
+	// 	return 1;
+    // } else if(error != 0){
+	// 	S4_TRACE("< Simulation_InitSolution (failed with error code %d) [omega=%f]\n", error, S->omega[0]);
+	// 	return 1;
+	// }
+    // S4_TRACE("Simulation nG value: %d\n", S->n_G);
+    // S4_TRACE("Simulation k vec: [%f, %f]\n", S->k[0], S->k[1]);
+    S4_TRACE("Solution after InitSolution: %p\n", S->solution);
+    std::ifstream ifs(fname);
+    // S4_TRACE("IFS FAIL RET VAL: %d\n", ifs.fail());
+    // S4_TRACE("IFS BAD RET VAL: %d\n", ifs.bad());
+    // S4_TRACE("IFS EOF RET VAL: %d\n", ifs.eof());
+    // S4_TRACE("IFS GOOD RET VAL: %d\n", ifs.good());
+    if(ifs.good() != 1){
+        return 3;
+    }
+    if(!ifs){
+        S4_TRACE("Could not open file!");
+    }
+    // S4_TRACE("Printing solution file\n");
+    // char c = ifs.get();
+    // while (ifs.good()) {
+    //   std::cout << c;
+    //   c = ifs.get();
+    // }
+    // ifs.close();
+
+    int len = strlen(fname);
+    const char *last_three = &fname[len-3];
+    // We do not allocate any memory for solution or its direct members here,
+    // because that is done inside InitSolution
+    // Solution *newsoln = (Solution*)S4_malloc(sizeof(Solution));
+    // S->solution = (Solution*)S4_malloc(sizeof(Solution));
+    S->field_cache = (FieldCache*)S4_malloc(sizeof(FieldCache));
+    S4_TRACE("Solution after malloc: %p\n", S->solution);
+    int fcache_is_null;
+    if(strcmp(last_three, "xml") == 0){
+        S4_TRACE("xml\n");
+        S4_TRACE("Initializing archive\n");
+        boost::archive::xml_iarchive ia(ifs);
+        S4_TRACE("Loading from archive\n");
+        ia >> bs::make_nvp("Solution", *S->solution);
+        ia >> bs::make_nvp("FieldCache_is_null", fcache_is_null);
+        S4_TRACE("Fieldcache_is_null: %d\n", fcache_is_null);
+        if(fcache_is_null == 1){
+            S->field_cache = NULL;
+        } else {
+            ia >> bs::make_nvp("FieldCache", *S->field_cache);
+        }
+        // ia >> bs::make_nvp("Solution", newS->solution);
+    } else if(strcmp(last_three, "txt") == 0) {
+        S4_TRACE("txt\n");
+        boost::archive::text_iarchive ia(ifs);
+        ia >> bs::make_nvp("Solution", *S->solution);
+        ia >> bs::make_nvp("FieldCache_is_null", fcache_is_null);
+        S4_TRACE("Fieldcache_is_null: %d\n", fcache_is_null);
+        if(fcache_is_null == 1){
+            S->field_cache = NULL;
+        } else {
+            ia >> bs::make_nvp("FieldCache", *S->field_cache);
+        }
+    } else if(strcmp(last_three, "bin") == 0) {
+        S4_TRACE("bin\n");
+        boost::archive::binary_iarchive ia(ifs);
+        ia >> bs::make_nvp("Solution", *S->solution);
+        ia >> bs::make_nvp("FieldCache_is_null", fcache_is_null);
+        S4_TRACE("Fieldcache_is_null: %d\n", fcache_is_null);
+        if(fcache_is_null == 1){
+            S->field_cache = NULL;
+        } else {
+            ia >> bs::make_nvp("FieldCache", *S->field_cache);
+        }
+    } else {
+        S4_TRACE("Bad extension\n");
+        return 2;
+    }
+    // S4_TRACE("newsoln = %p\n", &newsoln);
+    // S->solution = newsoln;
+    // LayerBands** Lbands = (LayerBands**)newsoln->layer_bands;
+    // Lbands[0]->epstype=10;
+    // memcpy(S->solution, newsoln, sizeof(newsoln));
+    // memcpy(S->solution->layer_bands, newsoln->layer_bands, sizeof(void*)*2*newsoln->layer_count);
+    ifs.close();
+	S4_TRACE("< Simulation_LoadSolution [omega=%f]\n", S->omega[0]);
+    S4_TRACE("Solution after LoadSolution: %p\n", S->solution);
+    // abort();
+    return 0;
+}
+
+
 void Simulation_Clone(const Simulation *S, Simulation *T){
 	S4_TRACE("> Simulation_Clone(S=%p, T=%p) [omega=%f]\n", S, T, S->omega[0]);
 	if(NULL == S || NULL == T){
@@ -765,6 +1395,7 @@ int Simulation_InitSolution(Simulation *S){
 		return 1;
 	}
 	sol = S->solution;
+    sol->layer_count = layer_count;
 	sol->G = (int*)S4_malloc(sizeof(int)*2*S->n_G);
 	if(NULL == sol->G){
 		S4_TRACE("< Simulation_InitSolution (failed; could not allocate sol->G) [omega=%f]\n", S->omega[0]);
@@ -846,6 +1477,7 @@ int Simulation_GetLayerSolution(Simulation *S, Layer *layer, LayerBands **layer_
 	Layer *L = S->layer;
 	while(NULL != L){
 		if(L == layer){
+            S4_TRACE(">> Solution inside loop: %p\n", *Lsoln);
 			if(NULL == *Lsoln){
 				error = Simulation_ComputeLayerSolution(S, L, layer_bands, layer_solution);
 				if(0 != error){ // should never happen
@@ -1658,8 +2290,11 @@ void Simulation_DestroySolution(Simulation *S){
 			// release Lbands
 			if(NULL != Lbands){
 				LayerBands *pB = (LayerBands*)(*Lbands);
+                S4_TRACE("LayerBand pointer: %p\n", pB);
 				if(NULL != pB){
+                    // abort();
 					if(NULL != pB->q){
+                        S4_TRACE("Freeing q!\n");
 						S4_free(pB->q);
 					}
 					S4_free(pB);
@@ -1668,6 +2303,7 @@ void Simulation_DestroySolution(Simulation *S){
 			// release Lsoln
 			if(NULL != Lsoln){
 				LayerSolution *pS = (LayerSolution*)(*Lsoln);
+                S4_TRACE("LayerSolution pointer: %p\n", pS);
 				if(NULL != pS){
 					if(NULL != pS->ab){
 						S4_free(pS->ab);
@@ -1683,7 +2319,8 @@ void Simulation_DestroySolution(Simulation *S){
 		sol->layer_bands = NULL;
 		sol->layer_solution = NULL;
 	}
-	S4_free(S->solution); S->solution = NULL;
+	S4_free(S->solution); 
+    S->solution = NULL;
 
 	S4_TRACE("< Simulation_DestroySolution [omega=%f]\n", S->omega[0]);
 }
@@ -2304,9 +2941,9 @@ int Simulation_GetField(Simulation *S, const double r[3], double fE[6], double f
         // I need to jump in right here and do a few thing
         std::complex<double> *P = Simulation_GetCachedField((const Simulation *)S, (const Layer *)L);
         std::complex<double> *W = Simulation_GetCachedW((const Simulation *)S, (const Layer *)L);
-        printf("Layer = %s\n", L->name);
-        printf("P = %p\n", P);
-        printf("W = %p\n", W);
+        //printf"Layer = %s\n", L->name);
+        //printf"P = %p\n", P);
+        //printf"W = %p\n", W);
         const double xy[2] = {r[0], r[1]};
         const Material *M;
         int shape_index;
@@ -2417,9 +3054,9 @@ int Simulation_GetFieldPlane(Simulation *S, int nxy[2], double zz, double *E, do
     if(S->options.use_weismann_formulation > 0) {
         P = Simulation_GetCachedField((const Simulation *)S, (const Layer *)L);
         W = Simulation_GetCachedW((const Simulation *)S, (const Layer *)L);
-        printf("Layer = %s\n", L->name);
-        printf("P = %p\n", P);
-        printf("W = %p\n", W);
+        //printf"Layer = %s\n", L->name);
+        //printf"P = %p\n", P);
+        //printf"W = %p\n", W);
         // TODO: Need to build out an array of epsilon values at each each grid
         // point, and pass this array into GetFieldOnGridImproved so it can be
         // indexed into when computing real space reconstructions of E from
@@ -2915,11 +3552,12 @@ void Simulation_InvalidateFieldCache(Simulation *S){
 	while(NULL != S->field_cache){
 		FieldCache *t = S->field_cache;
 		S->field_cache = S->field_cache->next;
-		// I allocated a seperate block of memory for W because I didn't want
-        // to deal with heinous pointer arithmetic, so we need to free this
-        // memory seperately as well.
+        S4_free(t->P);
         S4_free(t->W);
-		// The P pointer is just t+1, so don't S4_free it!
+        // layer actually just stores a character array containing the name of
+        // a layer in it's own memory space, not a pointer to a layer object
+        // So we need to free that memory
+        S4_free(t->layer);
 		S4_free(t);
 	}
 	S->field_cache = NULL;
@@ -2930,8 +3568,11 @@ std::complex<double>* Simulation_GetCachedField(const Simulation *S, const Layer
 	S4_TRACE("> Simulation_GetCachedField(S=%p, layer=%p) [omega=%f]\n", S, layer, S->omega[0]);
 	std::complex<double> *P = NULL;
 	FieldCache *f = S->field_cache;
+    S4_TRACE("> Simulation_GetCachedField: Input Layer name: %s (%p)\n", layer->name, layer->name);
 	while(NULL != f){
-		if(layer == f->layer && S->n_G == f->n){
+        S4_TRACE("> Simulation_GetCachedField: FieldCache Layer name: %s (%p)\n", f->layer, f->layer);
+		if(strcmp(layer->name, f->layer) == 0 && S->n_G == f->n){
+            S4_TRACE("> Simulation_GetCachedField: Found matching layer!\n");
 			P = f->P;
 			break;
 		}
@@ -2945,8 +3586,11 @@ std::complex<double>* Simulation_GetCachedW(const Simulation *S, const Layer *la
 	S4_TRACE("> Simulation_GetCachedW(S=%p, layer=%p) [omega=%f]\n", S, layer, S->omega[0]);
 	std::complex<double> *W = NULL;
 	FieldCache *f = S->field_cache;
+    S4_TRACE("> Simulation_GetCachedW: Input Layer name: %s (%p)\n", layer->name, layer->name);
 	while(NULL != f){
-		if(layer == f->layer && S->n_G == f->n){
+        S4_TRACE("> Simulation_GetCachedW: FieldCache Layer name: %s (%p)\n", f->layer, f->layer);
+		if(strcmp(layer->name, f->layer) == 0 && S->n_G == f->n){
+            S4_TRACE("> Simulation_GetCachedW: Found matching layer!\n");
 			W = f->W;
 			break;
 		}
@@ -2959,12 +3603,17 @@ void Simulation_AddFieldToCache(Simulation *S, const Layer *layer, size_t n, con
                                 const std::complex<double> *W, size_t Wlen){
 	S4_TRACE("> Simulation_AddFieldToCache(S=%p, layer=%p, n=%d, P=%p) [omega=%f]\n", S, layer, n, P, S->omega[0]);
 	/* FieldCache *f = (FieldCache*)S4_malloc(sizeof(FieldCache)+sizeof(std::complex<double>)*Plen+sizeof(std::complex<double>)*Wlen); */
-	FieldCache *f = (FieldCache*)S4_malloc(sizeof(FieldCache)+sizeof(std::complex<double>)*Plen);
-	f->P = (std::complex<double>*)(f+1);
+	FieldCache *f = (FieldCache*)S4_malloc(sizeof(FieldCache));
+	f->P = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>)*Plen);
 	memcpy(f->P, P, sizeof(std::complex<double>)*Plen);
     f->W = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>)*Wlen);
 	memcpy(f->W, W, sizeof(std::complex<double>)*Wlen);
-	f->layer = layer;
+    int len = strlen(layer->name);
+    S4_TRACE("> Simulation_AddFieldToCache: Name length =  %d\n", len);
+    f->layer = (char*)S4_malloc(sizeof(char)*len);
+    S4_TRACE("> Simulation_AddFieldToCache: Input Layer name: %s (%p)\n", layer->name, layer->name);
+	strcpy(f->layer, layer->name);
+    S4_TRACE("> Simulation_AddFieldToCache: FieldCache Layer name: %s (%p)\n", f->layer, f->layer);
 	f->n = n;
 	f->next = S->field_cache;
 	S->field_cache = f;

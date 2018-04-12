@@ -61,16 +61,17 @@ CHOLMOD_LIB = -lcholmod -lamd -lcolamd -lcamd -lccolamd
 #MPI_LIB = -L/usr/lib64/openmpi/lib/libmpi.so
 
 # Enable S4_TRACE debugging
-# values of 1, 2, 3 enable debugging, with verbosity increasing at 
+# values of 1, 2, 3 enable debugging, with verbosity increasing as 
 # value increases. 0 to disable
 S4_DEBUG = 0
+
 
 # Specify custom compilers if needed
 CXX = g++
 CC  = gcc
 
 #CFLAGS += -O3 -fPIC
-CFLAGS = -O3 -msse3 -msse2 -msse -fPIC
+CFLAGS = -Wall -O3 -msse3 -msse2 -msse -fPIC
 
 # options for Sampler module
 OPTFLAGS = -O3
@@ -80,11 +81,36 @@ S4_BINNAME = $(OBJDIR)/S4
 S4_LIBNAME = $(OBJDIR)/libS4.a
 S4r_LIBNAME = $(OBJDIR)/libS4r.a
 
+#### Download, compile, and install boost serialization lib. 
+#### This should all work fine, you must modify BOOST_INC, BOOST_LIBS,
+#### and PREFIX if you want to install boost to a different location 
+
+# Specify the paths to the boost include and lib directories
+BOOST_PREFIX=${CURDIR}/S4
+BOOST_INC = -I$(BOOST_PREFIX)/include
+BOOST_LIBS = -L$(BOOST_PREFIX)/lib/ -lboost_serialization
+BOOST_URL=https://sourceforge.net/projects/boost/files/boost/1.61.0/boost_1_61_0.tar.gz
+BOOST_FILE=boost.tar.gz
+# Target for downloading boost from above URL
+$(BOOST_FILE):
+	wget $(BOOST_URL) -O $(BOOST_FILE)
+
+# Target for extracting boost from archive and compiling. Depends on download target above
+${CURDIR}/S4/lib: $(BOOST_FILE)  
+	$(eval BOOST_DIR := $(shell tar tzf $(BOOST_FILE) | sed -e 's@/.*@@' | uniq))
+	@echo Boost dir is $(BOOST_DIR)
+	tar -xzvf $(BOOST_FILE)
+	mv $(BOOST_DIR) boost_src
+	cd boost_src && ./bootstrap.sh --with-libraries=serialization --prefix=$(BOOST_PREFIX) && ./b2 install
+# Final target which pulls everything together
+boost: $(BOOST_PREFIX)/lib
+
 ##################### DO NOT EDIT BELOW THIS LINE #####################
+
 
 #### Set the compilation flags
 
-CPPFLAGS = -I. -IS4 -IS4/RNP -IS4/kiss_fft 
+CPPFLAGS = -Wall -I. -IS4 -IS4/RNP -IS4/kiss_fft 
  
 ifeq ($(S4_DEBUG), 1)
 CPPFLAGS += -DENABLE_S4_TRACE 
@@ -102,6 +128,10 @@ CPPFLAGS += -DENABLE_S4_TRACE
 CPPFLAGS += -DDUMP_MATRICES
 CPPFLAGS += -DDUMP_MATRICES_LARGE
 CPPFLAGS += -ggdb 
+endif
+
+ifdef BOOST_INC
+	CPPFLAGS += $(BOOST_INC) $(BOOST_LIBS)
 endif
 
 ifdef BLAS_LIB
@@ -129,7 +159,7 @@ ifdef MPI_LIB
 CPPFLAGS += -DHAVE_MPI $(MPI_INC)
 endif
 
-LIBS = $(BLAS_LIB) $(LAPACK_LIB) $(FFTW3_LIB) $(PTHREAD_LIB) $(CHOLMOD_LIB) $(MPI_LIB)
+LIBS = $(BLAS_LIB) $(LAPACK_LIB) $(FFTW3_LIB) $(PTHREAD_LIB) $(CHOLMOD_LIB) $(MPI_LIB) $(BOOST_LIBS)
 
 #### Compilation targets
 
@@ -297,13 +327,10 @@ FunctionSampler2D.so: modules/function_sampler_2d.c modules/function_sampler_2d.
 	gcc -c -O2 -fpic -Wall -I. modules/predicates.c -o $(OBJDIR)/modules/mod_predicates.o
 	gcc $(OPTFLAGS) -shared -fpic -Wall $(LUA_INC) -o $(OBJDIR)/FunctionSampler2D.so $(OBJDIR)/modules/function_sampler_2d.o $(OBJDIR)/modules/mod_predicates.o modules/lua_function_sampler_2d.c $(LUA_LIB)
 
-
-
-
 #### Python extension
 
 S4_pyext: objdir $(S4_LIBNAME)
-	sh gensetup.py.sh $(OBJDIR) $(S4_LIBNAME) "$(LIBS)"
+	sh gensetup.py.sh $(OBJDIR) $(S4_LIBNAME) "$(LIBS)" $(BOOST_PREFIX)
 	pip install --upgrade ./
 
 clean:
