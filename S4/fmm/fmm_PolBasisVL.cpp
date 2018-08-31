@@ -101,6 +101,8 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
 	std::complex<double> *mDelta = NULL;
 	std::complex<double> *Eta = NULL;
     int pnotcached = NULL == P;
+    int ng2;
+    double ing2;
 	if(pnotcached){
 		// We need to compute the vector field
 
@@ -122,7 +124,9 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
 			}
 		}
         // Number of real space grid points
-		const int ng2 = ngrid[0]*ngrid[1];
+		ng2 = ngrid[0]*ngrid[1];
+        std::cout << "ngrid[0]: " << ngrid[0] << std::endl;
+        std::cout << "ngrid[1]: " << ngrid[1] << std::endl;
 	
         // Memory workspace array. N = number of basis terms, ng = number of
         // real space grid points for vector field. Has length 6N^2 + 4*ng 
@@ -131,8 +135,7 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
         // mDelta is an NxN matrix
         // mDelta = work[0:N^2]
 		mDelta = work;
-        // Eta is and NxN matrix
-        // Eta = work[N^2:2N^2]
+        // Eta is        // Eta = work[N^2:2N^2]
 		Eta = mDelta + nn;
         // P is an NxN matrix in real space, which is why we only allocate N^2
         // elements for it here. After Fourier transforming it becomes larger
@@ -149,7 +152,7 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
 		std::complex<double> *par = Fto + ng2; // real space parallel vector
 
 		// Generate the vector field
-		const double ing2 = 1./(double)ng2;
+		ing2 = 1./(double)ng2;
 		int ii[2];
 	
         // Creates workspace for the vector field. The vector field in general
@@ -235,7 +238,7 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
 		}
 		
 
-		fft_plan plan = fft_plan_dft_2d(ngrid, Ffrom, Fto, 1);
+		fft_plan plan = fft_plan_dft_2d(ngrid, Ffrom, Fto, -1);
 
 		// We fill in the quarter blocks of F in Fortran order
 		for(int w = 0; w < 4; ++w){
@@ -329,9 +332,11 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
         // Then lets construct \hat{N}. This is the operator that projects onto the
         // direction normal to a material interface, and is just I - P
         std::complex<double> *N;
+        // std::complex<double> diag = std::complex<double>(1.0*n);
+        std::complex<double> diag = std::complex<double>(1.0);
         N = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>) * n2*n2);
         // Set N to the identity first
-        RNP::TBLAS::SetMatrix<'A'>(n2,n2, std::complex<double>(0.), std::complex<double>(1.), N, n2);
+        RNP::TBLAS::SetMatrix<'A'>(n2, n2, std::complex<double>(0.), diag, N, n2);
 #ifdef DUMP_MATRICES
         DUMP_STREAM << "N:" << std::endl;
         RNP::IO::PrintMatrix(n2,n2,N,n2, DUMP_STREAM) << std::endl << std::endl;
