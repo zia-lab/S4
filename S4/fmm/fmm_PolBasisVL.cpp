@@ -125,8 +125,8 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
 		}
         // Number of real space grid points
 		ng2 = ngrid[0]*ngrid[1];
-        std::cout << "ngrid[0]: " << ngrid[0] << std::endl;
-        std::cout << "ngrid[1]: " << ngrid[1] << std::endl;
+        /* std::cout << "ngrid[0]: " << ngrid[0] << std::endl; */
+        /* std::cout << "ngrid[1]: " << ngrid[1] << std::endl; */
 	
         // Memory workspace array. N = number of basis terms, ng = number of
         // real space grid points for vector field. Has length 6N^2 + 4*ng 
