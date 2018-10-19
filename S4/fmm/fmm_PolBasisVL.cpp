@@ -329,37 +329,10 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
             DUMP_STREAM << "eta_inv:" << std::endl;
             RNP::IO::PrintMatrix(n,n,eta_inv,n, DUMP_STREAM) << std::endl << std::endl;
 #endif
-        // Then lets construct \hat{N}. This is the operator that projects onto the
-        // direction normal to a material interface, and is just I - P
-        std::complex<double> *N;
-        // std::complex<double> diag = std::complex<double>(1.0*n);
-        std::complex<double> diag = std::complex<double>(1.0);
-        N = (std::complex<double>*)S4_malloc(sizeof(std::complex<double>) * n2*n2);
-        // Set N to the identity first
-        RNP::TBLAS::SetMatrix<'A'>(n2, n2, std::complex<double>(0.), diag, N, n2);
-#ifdef DUMP_MATRICES
-        DUMP_STREAM << "N:" << std::endl;
-        RNP::IO::PrintMatrix(n2,n2,N,n2, DUMP_STREAM) << std::endl << std::endl;
-#endif
-        // Now subtract P from it. This loops through each row and treats each row
-        // as a vector, computing
-        // N[i,:] = -1*P[i,:] + N[i,:] 
-        for(size_t i = 0; i < n2; ++i){
-            RNP::TBLAS::Axpy(n2, std::complex<double>(-1.), &P[0+i*n2], 1, &N[0+i*n2], 1);
-        }
-#ifdef DUMP_MATRICES
-        DUMP_STREAM << "N:" << std::endl;
-        RNP::IO::PrintMatrix(n2,n2,N,n2, DUMP_STREAM) << std::endl << std::endl;
-        /* DUMP_STREAM << "Epsilon_inv:" << std::endl; */
-        /* RNP::IO::PrintMatrix(n,n, epsilon_inv,n, DUMP_STREAM) << std::endl << std::endl; */
-#endif
-        // Now we compute the matrix product of N and Epsilon2 and store it in
-        // the memory space of N
-        /* RNP::TBLAS::MultMM<'N','N'>(n2,n2,n2, std::complex<double>(1.),N,n2,Epsilon2,n2,std::complex<double>(0.),N,n2); */
 
         // Compute the thing inside the parenthesis in eqn 9a of Weismanns
         // paper (I call it W) and store it in the memory space of W
-        // This is looping through blocks of the matrix N (2Nx2N) and
+        // This is looping through blocks of the matrix P (2Nx2N) and
         // multiplying each sub-block by eta_inv (NxN) independently. w
         // indexes the block. 
         /* std::complex<double> *W; */
@@ -381,11 +354,11 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
             // Computes C := alpha*A*B + beta*C
             // We'll do the first term first, which means right multiplying by Epsilon_inv. 
             // We don't add the contents of Ncombo here because its empty
-            RNP::TBLAS::MultMM<'N','N'>(n,n,n, std::complex<double>(.5),&N[Erow+Ecol*n2],n2,eta_inv,n,std::complex<double>(0),&W[Erow+Ecol*n2],n2);
+            RNP::TBLAS::MultMM<'N','N'>(n,n,n, std::complex<double>(.5),&P[Erow+Ecol*n2],n2,eta_inv,n,std::complex<double>(0),&W[Erow+Ecol*n2],n2);
             // Now do the second term, which means left multiplying by
             // Epsilon_inv. Now we _do_ add the contents of Ncombo, bcause it
             // already contains the first term
-            RNP::TBLAS::MultMM<'N','N'>(n,n,n, std::complex<double>(.5),eta_inv,n,&N[Erow+Ecol*n2],n2,std::complex<double>(1.),&W[Erow+Ecol*n2],n2);
+            RNP::TBLAS::MultMM<'N','N'>(n,n,n, std::complex<double>(.5),eta_inv,n,&P[Erow+Ecol*n2],n2,std::complex<double>(1.),&W[Erow+Ecol*n2],n2);
         }
         
 #ifdef DUMP_MATRICES
@@ -399,7 +372,6 @@ int FMMGetEpsilon_PolBasisVL(const Simulation *S, const Layer *L, const int n, s
 		// Add to cache
 		Simulation_AddFieldToCache((Simulation*)S, L, S->n_G, P, 4*nn, W, 4*nn);
         // Now free up all the memory we just allocated
-        S4_free(N);
         S4_free(eta_inv);
         S4_free(W);
     }
