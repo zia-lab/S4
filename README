@@ -1,3 +1,22 @@
+INSTALLATION INSTRUCTIONS (64-bit Ubuntu):
+----
+
+git clone https://github.com/phoebe-p/S4
+cd S4
+make clean
+make boost
+make
+make S4_pyext
+
+If you have multiple Python versions, you make need to modify the S4_pyext part of the Makefile:
+pip3 install --upgrade ./
+
+to e.g.:
+[path of target python] setup.py install
+
+-------------------------------------
+
+
 S4: Stanford Stratified Structure Solver (http://fan.group.stanford.edu/S4/)
 
 A program for computing electromagnetic fields in periodic, layered
@@ -8,3 +27,4 @@ See the S4 manual, in doc/index.html, for a complete
 description of the package and its user interface, as well as
 installation instructions, the license and copyright, contact
 addresses, and other important information.
+
