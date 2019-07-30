@@ -325,7 +325,8 @@ void SolveLayerEigensystem(
 	const size_t n2 = 2*n;
 
 	if((size_t)-1 == lwork){
-		RNP::Eigensystem(n2, NULL, n2, q, NULL, 1, phi, n2, work_, NULL, lwork);
+		double dum;
+		RNP::Eigensystem(n2, NULL, n2, q, NULL, 1, phi, n2, work_, &dum, lwork);
 		work_[0] += n2*n2;
 		return;
 	}else if(0 == lwork){
