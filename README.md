@@ -1,6 +1,6 @@
-#DETAILED INSTALLATION INSTRUCTIONS (64-bit Ubuntu 16 or 18):
+# Details installation instructions (64-bit Ubuntu 16 or 18):
 
-##Key steps:
+## Key steps:
 
 ```
 git clone https://github.com/phoebe-p/S4
@@ -9,7 +9,7 @@ make boost
 make S4_pyext
 ```
 
-##Installing relevant libraries etc.:
+## Installing relevant libraries etc.:
 
 ```sudo apt-get update
 sudo apt install make
@@ -22,11 +22,20 @@ sudo apt-get install libfftw3-dev
 sudo apt-get install libsuitesparse-dev
 ```
 
-If you have multiple Python versions, you make need to modify the S4_pyext part of the Makefile:
+- libopenblas installs OpenBLAS, to satisfy the LAPACK and BLAS requirements
+- lib fftw3 install FFTW3, to satisfy the FFTW requirements
+- libsuitesparse install libraries to satisdy CHOLMOD & related requirements
+
+*If you have multiple Python versions, you make need to modify the S4_pyext part of the Makefile:*
+
+````
 pip3 install --upgrade ./
+````
 
 to e.g.:
-[path of target python] setup.py install
+```
+[path of target python or virtual environment] setup.py install
+```
 
 -------------------------------------
 
