@@ -1,12 +1,16 @@
-INSTALLATION INSTRUCTIONS (64-bit Ubuntu 16.04):
+DETAILED INSTALLATION INSTRUCTIONS (64-bit Ubuntu 16 or 18):
 ----
 
+Key steps:
+
+```
 git clone https://github.com/phoebe-p/S4
 cd S4
 make clean
 make boost
 make
 make S4_pyext
+```
 
 If you have multiple Python versions, you make need to modify the S4_pyext part of the Makefile:
 pip3 install --upgrade ./
