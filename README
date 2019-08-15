@@ -1,15 +1,15 @@
-DETAILED INSTALLATION INSTRUCTIONS (64-bit Ubuntu 16 or 18):
-----
+#DETAILED INSTALLATION INSTRUCTIONS (64-bit Ubuntu 16 or 18):
 
-Key steps:
+##Key steps:
 
-```git clone https://github.com/phoebe-p/S4
+```
+git clone https://github.com/phoebe-p/S4
 cd S4
 make boost
 make S4_pyext
 ```
 
-To install all the relevant libraries:
+##Installing relevant libraries etc.:
 
 ```sudo apt-get update
 sudo apt install make
@@ -30,7 +30,6 @@ to e.g.:
 
 -------------------------------------
 
-
 S4: Stanford Stratified Structure Solver (http://fan.group.stanford.edu/S4/)
 
 A program for computing electromagnetic fields in periodic, layered
@@ -42,6 +41,7 @@ description of the package and its user interface, as well as
 installation instructions, the license and copyright, contact
 addresses, and other important information.
 
+---------------------------------------
 
 sajidmc: The MakefileHPC is created to compile the S4 in HPC environment without
 root access. Also added an example for python extension testing: 
