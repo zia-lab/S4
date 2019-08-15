@@ -1,4 +1,4 @@
-# Details installation instructions (64-bit Ubuntu 16 or 18):
+# Detailed installation instructions (64-bit Ubuntu 16 or 18):
 
 ## Key steps:
 
